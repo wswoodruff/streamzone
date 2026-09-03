@@ -1,0 +1,8 @@
+<form class="panel" method="post" action="/register">
+  <h1>Join Streamzone</h1>
+  {{#if error}}<p class="error">{{error}}</p>{{/if}}
+  <label>Display name <input name="displayName" value="{{values.displayName}}" required autocomplete="name"></label>
+  <label>Email <input type="email" name="email" value="{{values.email}}" required autocomplete="email"></label>
+  <label>Password <input type="password" name="password" minlength="10" required autocomplete="new-password"></label>
+  <button type="submit">Create account</button>
+</form>

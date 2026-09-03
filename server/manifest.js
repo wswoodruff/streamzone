@@ -3,6 +3,8 @@
 const Path = require('node:path');
 const Schmervice = require('@hapipal/schmervice');
 const Schwifty = require('@hapipal/schwifty');
+const Cookie = require('@hapi/cookie');
+const Vision = require('@hapi/vision');
 const App = require('../lib');
 
 const databaseFilename = process.env.DATABASE_FILE || Path.join(process.cwd(), 'streamzone.sqlite');
@@ -30,8 +32,9 @@ module.exports = {
                 }
             },
             Schmervice,
+            Cookie,
+            Vision,
             App
         ]
     }
 };
-
