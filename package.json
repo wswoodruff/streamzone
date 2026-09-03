@@ -13,12 +13,15 @@
     "node": ">=22"
   },
   "dependencies": {
+    "@hapi/cookie": "^12.0.1",
     "@hapi/hapi": "^21.4.3",
     "@hapi/joi": "^17.1.1",
+    "@hapi/vision": "^7.0.3",
     "@hapipal/haute-couture": "^4.0.0",
     "@hapipal/schmervice": "^3.0.0",
     "@hapipal/schwifty": "^7.3.1",
     "better-sqlite3": "^12.2.0",
+    "handlebars": "^4.7.8",
     "knex": "^3.1.0",
     "objection": "^3.1.5"
   }

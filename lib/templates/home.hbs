@@ -1,0 +1,15 @@
+<section class="hero">
+  <p class="muted">ONE CHAT. EVERY CREATOR.</p>
+  <h1>Catch every stream<br>in one zone.</h1>
+  <p>Discover live broadcasts from creators across YouTube and Twitch.</p>
+</section>
+<section>
+  <h2>Live now</h2>
+  <div class="grid">
+    {{#each streams}}
+      <article class="card"><small>{{source.provider}}</small><h3>{{title}}</h3><p>{{source.streamer.displayName}}</p></article>
+    {{else}}
+      <article class="card"><h3>Quiet for now</h3><p class="muted">No creators are live. Check back soon.</p></article>
+    {{/each}}
+  </div>
+</section>

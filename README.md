@@ -6,7 +6,7 @@ streaming providers. The first foundation is a provider-neutral catalog of strea
 their YouTube or Twitch sources, and the broadcasts discovered on those sources.
 
 The server follows [hapipal](https://hapipal.com/) conventions and is composed by
-`haute-couture`. It uses [`schwifty`](https://github.com/hapipal/schwifty) for
+`haute-couture`. Frontend pages are rendered with Hapi Vision and Handlebars. It uses [`schwifty`](https://github.com/hapipal/schwifty) for
 Objection/Knex models and migrations and
 [`schmervice`](https://github.com/hapipal/schmervice) for application services.
 
@@ -33,6 +33,13 @@ and migrates `streamzone.sqlite`. Override the defaults with `HOST`, `PORT`, and
 `DATABASE_FILE` environment variables.
 
 ## API
+
+The home page and live-stream catalog are public. Create an account at `/register` or
+sign in at `/login` to access the creator dashboard at `/dashboard`. Authentication uses
+an HTTP-only, same-site cookie backed by a revocable, seven-day database session;
+passwords are salted and hashed with scrypt. Set a strong `COOKIE_PASSWORD` in deployed
+environments. Mutating API routes require an authenticated session, while the catalog
+`GET` routes remain public.
 
 Register a streamer and one of their channels:
 
@@ -66,7 +73,9 @@ curl 'http://localhost:3000/streams?status=live'
 - `lib/index.js` asks haute-couture to discover and compose app components.
 - `lib/models/` defines streamers, provider sources, streams, and their relationships.
 - `lib/services/streaming-service.js` owns database operations for the streaming domain.
+- `lib/services/auth-service.js` owns password verification and revocable sessions.
 - `lib/routes/streaming.js` exposes the initial management API.
+- `lib/routes/web.js` serves the public site, account flow, and dashboard with Vision.
 - `migrations/` contains the relational database schema.
 
 Run checks with `npm test` and `npm run test:syntax`.

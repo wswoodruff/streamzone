@@ -8,6 +8,8 @@ Test('manifest wires the streaming platform persistence and service plugins befo
     const originalLoad = Module._load;
     const schwifty = { name: '@hapipal/schwifty' };
     const schmervice = { name: '@hapipal/schmervice' };
+    const cookie = { name: '@hapi/cookie' };
+    const vision = { name: '@hapi/vision' };
     const app = { name: 'streamzone' };
 
     Module._load = (request, parent, isMain) => {
@@ -17,6 +19,14 @@ Test('manifest wires the streaming platform persistence and service plugins befo
 
         if (request === '@hapipal/schmervice') {
             return schmervice;
+        }
+
+        if (request === '@hapi/cookie') {
+            return cookie;
+        }
+
+        if (request === '@hapi/vision') {
+            return vision;
         }
 
         if (request === '../lib') {
@@ -32,7 +42,9 @@ Test('manifest wires the streaming platform persistence and service plugins befo
 
         Assert.equal(plugins[0].plugin, schwifty);
         Assert.equal(plugins[1], schmervice);
-        Assert.equal(plugins[2], app);
+        Assert.equal(plugins[2], cookie);
+        Assert.equal(plugins[3], vision);
+        Assert.equal(plugins[4], app);
         Assert.equal(plugins[0].options.migrateOnStart, true);
         Assert.equal(plugins[0].options.knex.client, 'better-sqlite3');
     }
