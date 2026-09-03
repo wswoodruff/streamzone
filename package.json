@@ -1,0 +1,25 @@
+{
+  "name": "streamzone",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A multi-streamer platform for interactive livestream chat experiences.",
+  "main": "lib/index.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "test:syntax": "find . -path ./node_modules -prune -o -name '*.js' -type f -print0 | xargs -0 -n1 node --check"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@hapi/hapi": "^21.4.3",
+    "@hapi/joi": "^17.1.1",
+    "@hapipal/haute-couture": "^4.0.0",
+    "@hapipal/schmervice": "^3.0.0",
+    "@hapipal/schwifty": "^7.3.1",
+    "better-sqlite3": "^12.2.0",
+    "knex": "^3.1.0",
+    "objection": "^3.1.5"
+  }
+}
