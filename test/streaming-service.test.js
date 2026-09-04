@@ -60,3 +60,28 @@ Test('a source is associated with its hosted streamer', async () => {
 
     Assert.deepEqual(inserted, { provider: 'twitch', channelId: 'creator', streamerId: 7 });
 });
+
+Test('a command cannot be added for an unknown streamer', async () => {
+    const service = new (loadService())();
+    service.server = { models: () => ({
+        Streamer: { query: () => ({ findById: async () => undefined }) },
+        Command: { query: () => ({ insert: () => Assert.fail('should not insert') }) }
+    }) };
+
+    Assert.equal(await service.createCommand(404, { name: 'hello', responseTemplate: 'Hi!' }), null);
+});
+
+Test('a command is normalized and scoped to its streamer', async () => {
+    const service = new (loadService())();
+    let inserted;
+    service.server = { models: () => ({
+        Streamer: { query: () => ({ findById: async () => ({ id: 9 }) }) },
+        Command: { query: () => ({ insert: async (record) => (inserted = record) }) }
+    }) };
+
+    await service.createCommand(9, { name: 'EightBall', responseTemplate: '{{user}}, yes.' });
+
+    Assert.deepEqual(inserted, {
+        name: 'eightball', responseTemplate: '{{user}}, yes.', streamerId: 9
+    });
+});
