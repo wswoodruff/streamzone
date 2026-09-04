@@ -16,8 +16,12 @@ Objection/Knex models and migrations and
 - A **source** identifies the streamer's channel on a provider. YouTube and Twitch are
   accepted initially, while keeping provider-specific identifiers out of the streamer.
 - A **stream** is a scheduled, live, or completed broadcast belonging to a source.
-- Commands, chat connections, and AI integrations are intentionally future layers built
-  on top of this provider-neutral foundation.
+- A **command** is a streamer-specific, configurable text response with an enabled flag
+  and cooldown setting. Chat connections and command execution are future layers.
+
+The executable roadmap and future-agent handoff live in [`STREAMZONE_PLAN.md`](STREAMZONE_PLAN.md).
+When asking an AI to “continue on the plan,” that document defines how it selects work
+and records its progress.
 
 ## Run locally
 
@@ -67,11 +71,28 @@ curl 'http://localhost:3000/streams?status=live'
 /streams` returns streams with their source and streamer, and optionally accepts a
 `status` query filter.
 
+Configure a text command for a streamer (authenticated requests require the session
+cookie obtained from login):
+
+```sh
+curl -X POST http://localhost:3000/streamers/1/commands \
+  -H 'content-type: application/json' \
+  -d '{"name":"hello","responseTemplate":"Welcome, {{user}}!","cooldownSeconds":10}'
+
+curl --cookie 'streamzone-session=YOUR_SESSION_COOKIE' \
+  http://localhost:3000/streamers/1/commands
+```
+
+Use `PATCH` or `DELETE` on `/streamers/{streamerId}/commands/{commandId}` to manage an
+existing command. The authenticated `GET` endpoint returns enabled commands only; pass
+`includeDisabled=true` when a management client needs the complete configuration.
+
 ## Project layout
 
 - `server/manifest.js` registers Schwifty, Schmervice, and the application plugin.
 - `lib/index.js` asks haute-couture to discover and compose app components.
 - `lib/models/` defines streamers, provider sources, streams, and their relationships.
+- `lib/models/command.js` defines per-streamer command configuration.
 - `lib/services/streaming-service.js` owns database operations for the streaming domain.
 - `lib/services/auth-service.js` owns password verification and revocable sessions.
 - `lib/routes/streaming.js` exposes the initial management API.
