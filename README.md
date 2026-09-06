@@ -19,6 +19,39 @@ Objection/Knex models and migrations and
 - A **command** is a streamer-specific, configurable text response with an enabled flag
   and cooldown setting. Chat connections and command execution are future layers.
 
+The account, audience, and runtime identities have deliberately separate meanings:
+
+- **User** is a registered Streamzone web account used to sign in to the dashboard. The
+  existing `lib/models/user.js` remains the registered web-account model; it is not a
+  livestream viewer record.
+- **StreamerMembership** is the creator-team RBAC join between a `User` and a
+  `Streamer`, with the `owner`, `admin`, `editor`, or `viewer` role. The existing
+  `lib/models/streamer-membership.js` remains the sole creator-team authorization
+  boundary.
+- **ChatUser** is Streamzone's provider-neutral audience identity. It represents one
+  person for chat participation and accounting and may be linked to multiple provider
+  accounts; it does not imply that the person has a registered `User` account.
+- **ChatIdentity** is one provider-scoped chat account belonging to a `ChatUser`, keyed
+  by provider and the provider's stable user identifier. Display names and avatars are
+  mutable profile data, never identity keys.
+- **ChannelRelationship** records a `ChatIdentity`'s provider-reported relationship to
+  a `Source` (for example broadcaster, moderator, subscriber/member, follower, or
+  blocked status), including provider timestamps and last-observed state. It is chat
+  context and policy input, not creator-team authorization.
+- **StreamSession** is a Streamzone-owned interaction and accounting window for one
+  `Streamer`. It may encompass one or more provider `Stream` broadcasts and gives
+  cooldowns, budgets, usage, participants, and audit records a stable session scope
+  even when a provider reconnects or a broadcast identifier changes.
+- **Participant** is the unique association of a `ChatUser` with a `StreamSession`. It
+  stores session-local participation state and aggregates (such as first/last activity
+  and usage counters) without duplicating provider identity or channel relationship
+  data.
+
+Only `User` plus `StreamerMembership` authorizes creator-dashboard access. A linked
+`ChatUser`, a `ChatIdentity`, a `Participant`, or any provider subscription,
+membership, moderator, broadcaster, follower, or other `ChannelRelationship` status
+**must never grant dashboard authorization**.
+
 The executable roadmap and future-agent handoff live in [`STREAMZONE_PLAN.md`](STREAMZONE_PLAN.md).
 When asking an AI to “continue on the plan,” that document defines how it selects work
 and records its progress.
@@ -119,6 +152,9 @@ existing command. The authenticated `GET` endpoint returns enabled commands only
 - `lib/routes/` groups routes by resource, with exactly one route definition per file;
   haute-couture discovers these modules and route-composition tests guard HTTP parity.
 - `lib/models/` defines streamers, provider sources, streams, and their relationships.
+- `lib/models/user.js` is the registered web-account model, and
+  `lib/models/streamer-membership.js` is creator-team RBAC; future audience models must
+  not replace or bypass either authorization boundary.
 - `lib/models/command.js` defines per-streamer command configuration.
 - `lib/services/streaming-service.js` owns database operations for the streaming domain.
 - `lib/services/auth-service.js` owns password verification and revocable sessions.
