@@ -37,6 +37,9 @@ const expectedRoutes = [
     ['POST', '/streamers/{streamerId}/instructions/{versionId}/warning-acknowledgement'],
     ['POST', '/streamers/{streamerId}/instructions/{versionId}/publication'],
     ['POST', '/streamers/{streamerId}/instructions/{versionId}/rollback'],
+    ['GET', '/streamers/{streamerId}/stream-sessions'],
+    ['POST', '/streamers/{streamerId}/stream-sessions'],
+    ['PATCH', '/streamers/{streamerId}/stream-sessions/{streamSessionId}'],
     ['GET', '/streams'],
     ['POST', '/streams'],
     ['PATCH', '/streams/{streamId}'],
@@ -68,25 +71,16 @@ Test('Haute Couture composition registers every nested route exactly once', asyn
     let composeCalls = 0;
 
     Module._load = (request, parent, isMain) => {
-        if (request === '@hapi/joi') {
-            return joiSchema;
-        }
-
-        if (request === 'handlebars') {
-            return {};
-        }
-
+        if (request === '@hapi/joi') return joiSchema;
+        if (request === 'handlebars') return {};
         if (request === '@hapipal/haute-couture') {
             return {
                 compose: async (server) => {
                     ++composeCalls;
-                    for (const filename of routeFiles(Path.join(__dirname, '..', 'lib', 'routes'))) {
-                        server.route(require(filename));
-                    }
+                    for (const filename of routeFiles(Path.join(__dirname, '..', 'lib', 'routes'))) server.route(require(filename));
                 }
             };
         }
-
         return originalLoad(request, parent, isMain);
     };
 
@@ -98,13 +92,16 @@ Test('Haute Couture composition registers every nested route exactly once', asyn
             auth: { strategy: () => undefined },
             route: (definition) => registered.push([definition.method, definition.path])
         };
-
         await app.plugin.register(server, {});
 
         Assert.equal(composeCalls, 1);
         Assert.equal(registered.length, expectedRoutes.length);
         for (const route of expectedRoutes) {
-            Assert.equal(registered.filter((registeredRoute) => registeredRoute[0] === route[0] && registeredRoute[1] === route[1]).length, 1, `${route.join(' ')} should be registered exactly once`);
+            Assert.equal(
+                registered.filter((registeredRoute) => registeredRoute[0] === route[0] && registeredRoute[1] === route[1]).length,
+                1,
+                `${route.join(' ')} should be registered exactly once`
+            );
         }
     }
     finally {

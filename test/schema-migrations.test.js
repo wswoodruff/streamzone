@@ -4,53 +4,34 @@ const Assert = require('node:assert/strict');
 const Test = require('node:test');
 let Knex;
 let Model;
-
 try {
     Knex = require('knex');
     ({ Model } = require('objection'));
 }
 catch {
-    // The production dependencies are optional in stripped-down test environments.
+    // Database dependencies may be unavailable in stripped-down test environments.
 }
 
 if (!Knex) {
-    Test('schema migration assertions (database dependencies unavailable)', { skip: true }, () => {});
+    Test('canonical schema assertions (database dependencies unavailable)', { skip: true }, () => {});
 }
 else {
-    const migrations = [
-        require('../migrations/001-create-streaming-tables'),
-        require('../migrations/002-create-auth-tables'),
-        require('../migrations/003-create-command-tables'),
-        require('../migrations/004-create-streamer-memberships'),
-        require('../migrations/005-create-streamer-invitations'),
-        require('../migrations/006-create-chat-identities'),
-        require('../migrations/007-create-channel-relationships'),
-        require('../migrations/008-create-stream-sessions'),
-        require('../migrations/009-create-stream-session-state'),
-        require('../migrations/010-create-participants'),
-        require('../migrations/011-create-point-economy'),
-        require('../migrations/012-create-rewards'),
-        require('../migrations/013-add-command-cooldown-scope'),
-        require('../migrations/014-create-ai-reward-executions'),
-        require('../migrations/015-version-ai-instructions'),
-        require('../migrations/016-instruction-lifecycle'),
-        require('../migrations/017-ai-feature-pricing'),
-        require('../migrations/018-create-ai-invocations'),
-        require('../migrations/019-add-command-chat-role'),
-        require('../migrations/020-expand-command-chat-role')
-    ];
+    const migration = require('../migrations/001-initial-schema');
+    const { CHAT_ROLES } = require('../lib/runtime/chat-roles');
     const Streamer = require('../lib/models/streamer');
     const User = require('../lib/models/user');
 
-    const expectedTables = ['AiFeatureConfiguration', 'AiInvocation', 'AiRewardExecution', 'ChannelRelationship', 'ChatIdentity', 'ChatUser', 'Command', 'EarningPolicy', 'ParticipantActivityEvent', 'PointAccount', 'PointLedgerEntry', 'PointReservationSettlement', 'RewardDefinition', 'RewardExecutorConfiguration', 'RewardRedemption', 'Session', 'Source', 'Stream', 'StreamSession', 'StreamSessionParticipant', 'StreamSessionState', 'Streamer', 'StreamerInstructionVersion', 'StreamerInvitation', 'StreamerMembership', 'StreamerParticipant', 'User'];
+    const expectedTables = [
+        'AiFeatureConfiguration', 'AiInvocation', 'ChannelRelationship', 'ChatIdentity', 'ChatUser',
+        'Command', 'EarningPolicy', 'ParticipantActivityEvent', 'PointAccount', 'PointLedgerEntry',
+        'PointReservationSettlement', 'RewardDefinition', 'RewardExecutorConfiguration', 'RewardRedemption',
+        'Session', 'Source', 'Stream', 'StreamSession', 'StreamSessionParticipant', 'StreamSessionState',
+        'Streamer', 'StreamerInstructionVersion', 'StreamerInvitation', 'StreamerMembership',
+        'StreamerParticipant', 'User'
+    ].sort();
 
     const makeDatabase = async () => {
-        const knex = Knex({
-            client: 'better-sqlite3',
-            connection: { filename: ':memory:' },
-            useNullAsDefault: true
-        });
-
+        const knex = Knex({ client: 'better-sqlite3', connection: { filename: ':memory:' }, useNullAsDefault: true });
         await knex.raw('PRAGMA foreign_keys = ON');
         return knex;
     };
@@ -62,97 +43,100 @@ else {
         .map(({ name }) => name)
         .sort();
 
-    const foreignKeys = async (knex, table) => (await knex.raw(`PRAGMA foreign_key_list(\`${table}\`)`))
-        .map(({ from, table: referencedTable, on_delete: onDelete }) => ({ from, referencedTable, onDelete }));
-
-    Test('migrations build a valid fresh PascalCase schema', async (t) => {
+    Test('one canonical migration builds the complete greenfield schema', async (t) => {
         const knex = await makeDatabase();
         t.after(() => knex.destroy());
-
-        for (const migration of migrations) await migration.up(knex);
-
+        await migration.up(knex);
         Assert.deepEqual(await tableNames(knex), expectedTables);
+        Assert.equal(await knex.schema.hasTable('AiRewardExecution'), false);
         Assert.deepEqual(await knex.raw('PRAGMA foreign_key_check'), []);
-        for (const table of expectedTables) Assert.equal(await knex.schema.hasTable(table), true);
     });
 
-    Test('fresh schema preserves constraints and model relations', async (t) => {
+    Test('greenfield constraints reject obsolete and invalid domain states', async (t) => {
+        const knex = await makeDatabase();
+        t.after(() => knex.destroy());
+        await migration.up(knex);
+
+        const [streamerId] = await knex('Streamer').insert({ slug: 'alice', displayName: 'Alice' });
+        const [sourceId] = await knex('Source').insert({ streamerId, provider: 'twitch', channelId: 'alice-channel' });
+        const [sessionId] = await knex('StreamSession').insert({ streamerId, title: 'Weekly show' });
+
+        const streamInfo = await knex.raw('PRAGMA table_info(`Stream`)');
+        Assert.equal(streamInfo.find(({ name }) => name === 'streamSessionId').notnull, 1);
+        const streamFks = await knex.raw('PRAGMA foreign_key_list(`Stream`)');
+        Assert.ok(streamFks.some((fk) => fk.from === 'streamSessionId' && fk.table === 'StreamSession' && fk.on_delete === 'CASCADE'));
+        await Assert.rejects(knex('Stream').insert({ sourceId, externalId: 'ungrouped' }), /NOT NULL constraint failed/);
+        await knex('Stream').insert({ sourceId, streamSessionId: sessionId, externalId: 'grouped' });
+        await Assert.rejects(knex('Stream').insert({ sourceId, streamSessionId: sessionId, externalId: 'same-session-source' }), /UNIQUE constraint failed/);
+
+        for (const [index, role] of CHAT_ROLES.entries()) {
+            await knex('Command').insert({ streamerId, name: `role-${index}`, responseTemplate: 'ok', requiredChatRole: role });
+        }
+        await knex('Command').insert({ streamerId, name: 'default-role', responseTemplate: 'ok' });
+        Assert.equal((await knex('Command').where({ name: 'default-role' }).first()).requiredChatRole, 'everyone');
+        await Assert.rejects(knex('Command').insert({ streamerId, name: 'bad-role', responseTemplate: 'no', requiredChatRole: 'admin' }), /CHECK constraint failed/);
+        await Assert.rejects(knex('Command').insert({ streamerId, name: 'bad-scope', responseTemplate: 'no', cooldownScope: 'legacy' }), /CHECK constraint failed/);
+
+        await knex('RewardDefinition').insert({ streamerId, name: 'Manual', pointCost: 10, fulfillmentType: 'manual', eligibilityPolicy: '{}' });
+        await knex('RewardDefinition').insert({ streamerId, name: 'Bot', pointCost: 10, fulfillmentType: 'deterministicBot', eligibilityPolicy: '{}' });
+        await Assert.rejects(knex('RewardDefinition').insert({ streamerId, name: 'AI reward', pointCost: 10, fulfillmentType: 'ai', eligibilityPolicy: '{}' }), /CHECK constraint failed/);
+
+        const aiColumns = (await knex.raw('PRAGMA table_info(`AiFeatureConfiguration`)')).map(({ name }) => name);
+        Assert.ok(aiColumns.includes('streamerId'));
+        Assert.equal(aiColumns.includes('rewardDefinitionId'), false);
+        const aiFks = await knex.raw('PRAGMA foreign_key_list(`AiInvocation`)');
+        for (const target of ['Streamer', 'StreamSession', 'ChatUser', 'ChatIdentity', 'StreamerInstructionVersion', 'PointLedgerEntry']) {
+            Assert.ok(aiFks.some((fk) => fk.table === target), `AiInvocation -> ${target}`);
+        }
+
+        const [chatUserId] = await knex('ChatUser').insert({ status: 'active' });
+        const [accountId] = await knex('PointAccount').insert({ streamerId, chatUserId });
+        await Assert.rejects(knex('PointAccount').where({ id: accountId }).update({ availableBalance: -1 }), /CHECK constraint failed/);
+        await Assert.rejects(knex('PointLedgerEntry').insert({ accountId, delta: 1, type: 'spend', reason: 'invalid sign', actorType: 'system', actorId: 'test', idempotencyKey: 'bad-sign' }), /CHECK constraint failed/);
+
+        await knex('StreamerInstructionVersion').insert({ streamerId, instruction: 'One', status: 'active' });
+        await Assert.rejects(knex('StreamerInstructionVersion').insert({ streamerId, instruction: 'Two', status: 'active' }), /UNIQUE constraint failed/);
+        Assert.deepEqual(await knex.raw('PRAGMA foreign_key_check'), []);
+    });
+
+    Test('model relationships resolve against the canonical schema and cascades are clean', async (t) => {
         const knex = await makeDatabase();
         t.after(async () => {
             Model.knex(null);
             await knex.destroy();
         });
-
-        for (const migration of migrations) await migration.up(knex);
-        const [streamerId] = await knex('Streamer').insert({ slug: 'alice', displayName: 'Alice' });
-        const [sourceId] = await knex('Source').insert({ streamerId, provider: 'twitch', channelId: 'alice-channel' });
-        await knex('Stream').insert({ sourceId, externalId: 'live-1', title: 'Live now' });
+        await migration.up(knex);
+        const [streamerId] = await knex('Streamer').insert({ slug: 'graphs', displayName: 'Graphs' });
+        const [sourceId] = await knex('Source').insert({ streamerId, provider: 'youtube', channelId: 'graphs-channel' });
+        const [sessionId] = await knex('StreamSession').insert({ streamerId, title: 'Graph session' });
+        await knex('Stream').insert({ sourceId, streamSessionId: sessionId, externalId: 'video-1', title: 'Live now' });
         await knex('Command').insert({ streamerId, name: 'hello', responseTemplate: 'Hello!' });
-        Assert.equal((await knex('Command').first()).cooldownScope, 'streamer');
-        Assert.equal((await knex('Command').first()).requiredChatRole, 'everyone');
-        await knex('Command').insert({ streamerId, name: 'owner-only', responseTemplate: 'Owner!', requiredChatRole: 'owner' });
-        Assert.equal((await knex('Command').where({ name: 'owner-only' }).first()).requiredChatRole, 'owner');
-        const [userId] = await knex('User').insert({ email: 'alice@example.com', displayName: 'Alice', passwordHash: 'hash' });
+        const [userId] = await knex('User').insert({ email: 'graphs@example.com', displayName: 'Graphs', passwordHash: 'hash' });
         await knex('Session').insert({ id: 'a'.repeat(64), userId, expiresAt: new Date(Date.now() + 60_000).toISOString() });
         await knex('StreamerMembership').insert({ userId, streamerId, role: 'owner' });
 
-        Assert.deepEqual(await foreignKeys(knex, 'Session'), [
-            { from: 'userId', referencedTable: 'User', onDelete: 'CASCADE' }
-        ]);
-        Assert.deepEqual(await foreignKeys(knex, 'Source'), [
-            { from: 'streamerId', referencedTable: 'Streamer', onDelete: 'CASCADE' }
-        ]);
-        Assert.deepEqual(await foreignKeys(knex, 'Stream'), [
-            { from: 'streamSessionId', referencedTable: 'StreamSession', onDelete: 'SET NULL' },
-            { from: 'sourceId', referencedTable: 'Source', onDelete: 'CASCADE' }
-        ]);
-        Assert.deepEqual(await foreignKeys(knex, 'StreamSession'), [
-            { from: 'streamerId', referencedTable: 'Streamer', onDelete: 'CASCADE' }
-        ]);
-        Assert.deepEqual(await foreignKeys(knex, 'StreamSessionState'), [
-            { from: 'streamSessionId', referencedTable: 'StreamSession', onDelete: 'CASCADE' }
-        ]);
-        Assert.deepEqual((await foreignKeys(knex, 'StreamerMembership')).sort((a, b) => a.from.localeCompare(b.from)), [
-            { from: 'streamerId', referencedTable: 'Streamer', onDelete: 'CASCADE' },
-            { from: 'userId', referencedTable: 'User', onDelete: 'CASCADE' }
-        ]);
-        Assert.deepEqual(await foreignKeys(knex, 'ChatIdentity'), [
-            { from: 'chatUserId', referencedTable: 'ChatUser', onDelete: 'CASCADE' }
-        ]);
-
-        await Assert.rejects(
-            knex('StreamerMembership').insert({ userId, streamerId, role: 'viewer' }),
-            /UNIQUE constraint failed/
-        );
-        await Assert.rejects(
-            knex('Source').insert({ streamerId, provider: 'twitch', channelId: 'alice-channel' }),
-            /UNIQUE constraint failed/
-        );
-
         Model.knex(knex);
-        const streamer = await Streamer.query().findById(streamerId).withGraphFetched('[sources.streams, commands, memberships.user]');
-        Assert.equal(streamer.sources[0].streams[0].externalId, 'live-1');
-        Assert.equal(streamer.commands[0].name, 'hello');
-        Assert.equal(streamer.memberships[0].user.email, 'alice@example.com');
+        const streamer = await Streamer.query().findById(streamerId).withGraphFetched('[sources.streams.streamSession, streamSessions, commands, memberships.user]');
+        Assert.equal(streamer.sources[0].streams[0].streamSession.id, sessionId);
+        Assert.equal(streamer.streamSessions[0].id, sessionId);
+        Assert.equal(streamer.commands[0].requiredChatRole, 'everyone');
         const user = await User.query().findById(userId).withGraphFetched('memberships.streamer');
-        Assert.equal(user.memberships[0].streamer.slug, 'alice');
+        Assert.equal(user.memberships[0].streamer.slug, 'graphs');
 
         await knex('User').where({ id: userId }).delete();
-        Assert.equal(await knex('Session').count({ count: '*' }).first().then(({ count }) => Number(count)), 0);
-        Assert.equal(await knex('StreamerMembership').count({ count: '*' }).first().then(({ count }) => Number(count)), 0);
+        Assert.equal(Number((await knex('Session').count({ count: '*' }).first()).count), 0);
         await knex('Streamer').where({ id: streamerId }).delete();
-        Assert.equal(await knex('Source').count({ count: '*' }).first().then(({ count }) => Number(count)), 0);
-        Assert.equal(await knex('Stream').count({ count: '*' }).first().then(({ count }) => Number(count)), 0);
-        Assert.equal(await knex('Command').count({ count: '*' }).first().then(({ count }) => Number(count)), 0);
+        for (const table of ['Source', 'StreamSession', 'Stream', 'Command']) {
+            Assert.equal(Number((await knex(table).count({ count: '*' }).first()).count), 0, table);
+        }
+        Assert.deepEqual(await knex.raw('PRAGMA foreign_key_check'), []);
     });
 
-    Test('down migrations remove the fresh schema cleanly', async (t) => {
+    Test('down removes the canonical schema cleanly', async (t) => {
         const knex = await makeDatabase();
         t.after(() => knex.destroy());
-        for (const migration of migrations) await migration.up(knex);
-        for (const migration of migrations.toReversed()) await migration.down(knex);
-
+        await migration.up(knex);
+        await migration.down(knex);
         Assert.deepEqual(await tableNames(knex), []);
-        Assert.deepEqual(await knex.raw('PRAGMA foreign_key_check'), []);
     });
 }

@@ -40,7 +40,9 @@ else {
             ['DELETE', '/streamers/1'],
             ['POST', '/streamers/1/sources', sourcePayload],
             ['GET', '/streamers/1/commands'],
-            ['POST', '/streams', { sourceId: 1 }],
+            ['POST', '/streamers/1/stream-sessions', { title: 'Nope' }],
+            ['GET', '/streamers/1/stream-sessions'],
+            ['POST', '/streams', { sourceId: 1, streamSessionId: 1 }],
             ['PATCH', '/streams/1', { title: 'Nope' }],
             ['GET', '/streamers/1/memberships'],
             ['GET', '/dashboard']
@@ -67,6 +69,14 @@ else {
             const read = await Helpers.injectAuthenticated(context, accounts[role], { method: 'GET', url: `/streamers/${streamer.id}/commands` });
             Assert.equal(read.statusCode, 200, `${role} may read management data`);
 
+            const sessions = await Helpers.injectAuthenticated(context, accounts[role], { method: 'GET', url: `/streamers/${streamer.id}/stream-sessions` });
+            Assert.equal(sessions.statusCode, 200, `${role} may read sessions`);
+
+            const createSession = await Helpers.injectAuthenticated(context, accounts[role], {
+                method: 'POST', url: `/streamers/${streamer.id}/stream-sessions`, payload: { title: `${role} session` }
+            });
+            Assert.equal(createSession.statusCode, role === 'viewer' ? 403 : 201, `${role} manageStreams`);
+
             const source = await Helpers.injectAuthenticated(context, accounts[role], {
                 method: 'POST', url: `/streamers/${streamer.id}/sources`, payload: { ...sourcePayload, channelId: `${role}-channel` }
             });
@@ -89,6 +99,11 @@ else {
         const bobTenant = await Helpers.createTenant(context, bob, 'owner', { slug: 'bob' });
         const source = await Helpers.createSource(context, aliceTenant);
 
+        const sessionResponse = await Helpers.injectAuthenticated(context, alice, {
+            method: 'POST', url: `/streamers/${aliceTenant.id}/stream-sessions`, payload: { title: 'Alice session' }
+        });
+        Assert.equal(sessionResponse.statusCode, 201);
+
         const created = await Helpers.injectAuthenticated(context, alice, {
             method: 'POST', url: `/streamers/${aliceTenant.id}/commands`, payload: commandPayload
         });
@@ -96,12 +111,13 @@ else {
         const command = created.result;
 
         const sameTenant = await Helpers.injectAuthenticated(context, alice, {
-            method: 'POST', url: '/streams', payload: { sourceId: source.id, title: 'Mine' }
+            method: 'POST', url: '/streams', payload: { sourceId: source.id, streamSessionId: sessionResponse.result.id, title: 'Mine' }
         });
         Assert.equal(sameTenant.statusCode, 201);
 
         for (const request of [
             { method: 'GET', url: `/streamers/${aliceTenant.id}/commands` },
+            { method: 'GET', url: `/streamers/${aliceTenant.id}/stream-sessions` },
             { method: 'PATCH', url: `/streamers/${aliceTenant.id}/commands/${command.id}`, payload: { responseTemplate: 'stolen' } },
             { method: 'DELETE', url: `/streams/${sameTenant.result.id}` }
         ]) {
@@ -115,6 +131,12 @@ else {
         });
         Assert.equal(wrongPath.statusCode, 404);
         Assert.equal((await context.models.Command.query().findById(command.id)).responseTemplate, 'Hello!');
+
+        const foreignSession = await context.models.StreamSession.query().insert({ streamerId: bobTenant.id, title: 'Bob session' });
+        const crossTenantStream = await Helpers.injectAuthenticated(context, alice, {
+            method: 'POST', url: '/streams', payload: { sourceId: source.id, streamSessionId: foreignSession.id, title: 'Wrong tenant' }
+        });
+        Assert.equal(crossTenantStream.statusCode, 404);
     });
 
     Test('a stream source can change only within its existing tenant', async (t) => {
@@ -125,7 +147,8 @@ else {
         const original = await Helpers.createSource(context, first);
         const sameTenant = await Helpers.createSource(context, first);
         const otherTenant = await Helpers.createSource(context, second);
-        const stream = await context.models.Stream.query().insert({ sourceId: original.id, status: 'scheduled' });
+        const session = await context.models.StreamSession.query().insert({ streamerId: first.id, title: 'Source move' });
+        const stream = await context.models.Stream.query().insert({ sourceId: original.id, streamSessionId: session.id, status: 'scheduled' });
 
         const allowed = await Helpers.injectAuthenticated(context, user, { method: 'PATCH', url: `/streams/${stream.id}`, payload: { sourceId: sameTenant.id } });
         Assert.equal(allowed.statusCode, 200);
@@ -153,12 +176,13 @@ else {
         const owner = await Helpers.createUser(context);
         const streamer = await Helpers.createTenant(context, owner);
         const source = await Helpers.createSource(context, streamer);
-        await context.models.Stream.query().insert({ sourceId: source.id, status: 'live' });
+        const session = await context.models.StreamSession.query().insert({ streamerId: streamer.id, title: 'Cascade' });
+        await context.models.Stream.query().insert({ sourceId: source.id, streamSessionId: session.id, status: 'live' });
         await context.models.Command.query().insert({ streamerId: streamer.id, ...commandPayload });
 
         const removed = await Helpers.injectAuthenticated(context, owner, { method: 'DELETE', url: `/streamers/${streamer.id}` });
         Assert.equal(removed.statusCode, 204);
-        for (const table of ['Streamer', 'StreamerMembership', 'Source', 'Stream', 'Command']) {
+        for (const table of ['Streamer', 'StreamerMembership', 'Source', 'StreamSession', 'Stream', 'Command']) {
             Assert.equal(Number((await context.knex(table).count({ count: '*' }).first()).count), 0, table);
         }
         await context.models.User.query().deleteById(owner.user.id);

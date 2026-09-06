@@ -16,13 +16,7 @@ if (!Knex) {
     Test('invitation integration assertions (database dependencies unavailable)', { skip: true }, () => {});
 }
 else {
-    const migrations = [
-        require('../migrations/001-create-streaming-tables'),
-        require('../migrations/002-create-auth-tables'),
-        require('../migrations/003-create-command-tables'),
-        require('../migrations/004-create-streamer-memberships'),
-        require('../migrations/005-create-streamer-invitations')
-    ];
+    const migration = require('../migrations/001-initial-schema');
     const User = require('../lib/models/user');
     const Streamer = require('../lib/models/streamer');
     const StreamerMembership = require('../lib/models/streamer-membership');
@@ -33,7 +27,7 @@ else {
     Test('invitations are hashed, unique, expiring, revocable, email-bound, and transactionally accepted', async (t) => {
         const knex = Knex({ client: 'better-sqlite3', connection: { filename: ':memory:' }, useNullAsDefault: true });
         t.after(async () => { Model.knex(null); await knex.destroy(); });
-        for (const migration of migrations) await migration.up(knex);
+        await migration.up(knex);
         Model.knex(knex);
 
         const owner = await User.query().insert({ email: 'owner@example.com', displayName: 'Owner', passwordHash: 'x' });

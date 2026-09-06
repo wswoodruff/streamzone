@@ -22,10 +22,7 @@ const request = async (path, options = {}) => {
 
 const askInteger = async (message, initial, minimum = 0) => {
     const answer = await prompt({
-        type: 'input',
-        name: 'value',
-        message,
-        initial: String(initial),
+        type: 'input', name: 'value', message, initial: String(initial),
         validate: (value) => Number.isSafeInteger(Number(value)) && Number(value) >= minimum ? true : `Enter an integer >= ${minimum}.`
     });
     return Number(answer.value);
@@ -35,53 +32,25 @@ const streamLabel = (stream) => {
     const status = stream.status === 'live' ? 'LIVE' : stream.status;
     return `[${status}] ${stream.streamer || `streamer ${stream.streamerId}`} / ${stream.provider} / ${stream.title || stream.externalId || `stream ${stream.id}`}`;
 };
-
 const identityLabel = (identity) => `${identity.displayName || identity.handle || identity.providerUserId} (@${identity.handle || identity.providerUserId}) [chatUser:${identity.chatUserId}]`;
 
 const chooseClient = async () => {
     const bootstrap = await request('/__test-console/bootstrap');
-    if (!bootstrap.streams.length) throw new Error('No streams exist yet. Create a streamer/source/stream first, then reopen the console.');
+    if (!bootstrap.streams.length) throw new Error('No streams exist yet. Create a streamer, StreamSession, source, and stream first, then reopen the console.');
 
     const orderedStreams = bootstrap.streams.toSorted((a, b) => (a.status === 'live' ? -1 : 1) - (b.status === 'live' ? -1 : 1));
     const { streamId } = await prompt({
-        type: 'autocomplete',
-        name: 'streamId',
-        message: 'Which stream should this terminal simulate?',
-        limit: 12,
+        type: 'autocomplete', name: 'streamId', message: 'Which stream should this terminal simulate?', limit: 12,
         choices: orderedStreams.map((stream) => ({ name: String(stream.id), message: streamLabel(stream) }))
     });
     const stream = bootstrap.streams.find((item) => String(item.id) === String(streamId));
-
-    let streamSessionId = stream.streamSessionId;
-    if (!streamSessionId) {
-        const sessions = bootstrap.sessions.filter((session) => session.streamerId === stream.streamerId && session.status !== 'ended');
-        const sessionChoices = [
-            { name: '__new__', message: '+ Create a temporary console session' },
-            ...sessions.map((session) => ({ name: String(session.id), message: `[${session.status}] ${session.title} (#${session.id})` }))
-        ];
-        const answer = await prompt({
-            type: 'autocomplete',
-            name: 'streamSessionId',
-            message: 'This stream has no StreamSession. Use which session?',
-            limit: 10,
-            choices: sessionChoices
-        });
-        streamSessionId = answer.streamSessionId === '__new__' ? null : Number(answer.streamSessionId);
-    }
-
     const identities = bootstrap.identities.filter((identity) => identity.provider === stream.provider && identity.status === 'active');
     const { identity } = await prompt({
-        type: 'autocomplete',
-        name: 'identity',
-        message: 'Who is chatting in this terminal?',
-        limit: 12,
-        choices: [
-            { name: '__new__', message: '+ New username / chat identity' },
-            ...identities.map((item) => ({ name: String(item.id), message: identityLabel(item) }))
-        ]
+        type: 'autocomplete', name: 'identity', message: 'Who is chatting in this terminal?', limit: 12,
+        choices: [{ name: '__new__', message: '+ New username / chat identity' }, ...identities.map((item) => ({ name: String(item.id), message: identityLabel(item) }))]
     });
 
-    const payload = { streamId: stream.id, streamSessionId };
+    const payload = { streamId: stream.id };
     if (identity === '__new__') {
         const values = await prompt([
             { type: 'input', name: 'username', message: `${stream.provider} username / provider user ID:` },
@@ -90,9 +59,7 @@ const chooseClient = async () => {
         payload.username = values.username;
         payload.displayName = values.displayName || values.username;
         const roles = await prompt({
-            type: 'multiselect',
-            name: 'relationships',
-            message: 'Channel relationships for this user (optional):',
+            type: 'multiselect', name: 'relationships', message: 'Channel relationships for this user (optional):',
             choices: bootstrap.relationshipTypes.map((relationship) => ({ name: relationship, message: relationship }))
         });
         payload.relationships = roles.relationships;
@@ -102,9 +69,7 @@ const chooseClient = async () => {
         const { updateRoles } = await prompt({ type: 'confirm', name: 'updateRoles', message: 'Replace this identity\'s channel relationships for this source?', initial: false });
         if (updateRoles) {
             const roles = await prompt({
-                type: 'multiselect',
-                name: 'relationships',
-                message: 'Channel relationships:',
+                type: 'multiselect', name: 'relationships', message: 'Channel relationships:',
                 choices: bootstrap.relationshipTypes.map((relationship) => ({ name: relationship, message: relationship }))
             });
             payload.relationships = roles.relationships;
@@ -112,13 +77,10 @@ const chooseClient = async () => {
     }
 
     const role = await prompt({
-        type: 'select',
-        name: 'commandRole',
-        message: 'Simulated command access role:',
+        type: 'select', name: 'commandRole', message: 'Simulated command access role:',
         choices: ['everyone', 'moderator', 'supermod', 'owner']
     });
     payload.commandRole = role.commandRole;
-
     return request('/__test-console/clients', { method: 'POST', body: JSON.stringify(payload) });
 };
 
@@ -127,9 +89,7 @@ const printStatus = (status) => {
     console.log(`\nConnected: ${client.displayName} @ ${client.streamerName} (${client.provider})`);
     console.log(`Stream #${client.streamId} / Session #${client.streamSessionId} / ChatUser #${client.chatUserId}`);
     console.log(`Points: ${balance.availableBalance}`);
-    console.log(aiFeature?.enabled
-        ? `AI: !${aiFeature.invocationCommand} (${aiFeature.pricingPolicy.pointCost} pts, ${aiFeature.provider}/${aiFeature.model})`
-        : 'AI: not configured/enabled');
+    console.log(aiFeature?.enabled ? `AI: !${aiFeature.invocationCommand} (${aiFeature.pricingPolicy.pointCost} pts, ${aiFeature.provider}/${aiFeature.model})` : 'AI: not configured/enabled');
 };
 
 const configureAi = async (clientId, status) => {
@@ -144,31 +104,23 @@ const configureAi = async (clientId, status) => {
     values.pointCost = await askInteger('Point cost per AI invocation:', current.pricingPolicy?.pointCost || 1, 1);
     values.cooldownSeconds = await askInteger('AI cooldown seconds:', current.cooldownSeconds || 0, 0);
     const scopeChoices = ['participant', 'session', 'streamer', 'global'];
-    const scope = await prompt({
-        type: 'select',
-        name: 'cooldownScope',
-        message: 'AI cooldown scope:',
-        initial: Math.max(0, scopeChoices.indexOf(current.cooldownScope || 'participant')),
-        choices: scopeChoices
-    });
+    const scope = await prompt({ type: 'select', name: 'cooldownScope', message: 'AI cooldown scope:', initial: Math.max(0, scopeChoices.indexOf(current.cooldownScope || 'participant')), choices: scopeChoices });
     values.cooldownScope = scope.cooldownScope;
     const updated = await request(`/__test-console/clients/${clientId}/ai`, { method: 'PUT', body: JSON.stringify(values) });
     printStatus(updated);
     return updated;
 };
 
-const help = () => {
-    console.log(`\nCommands:
+const help = () => console.log(`\nCommands:
   /help             Show this help
   /state            Show selected stream/user/session and AI config
   /balance          Show current point balance
   /points N         Add N points (negative N removes points)
   /ai               Configure the standalone AI feature for this streamer
   /switch           Pick another stream/user for this terminal
-  /quit              Exit
+  /quit             Exit
 
 Everything else is sent as a chat message, e.g. !hello or !ai explain skeptical theism.`);
-};
 
 const runClient = async (status) => {
     printStatus(status);
@@ -180,20 +132,12 @@ const runClient = async (status) => {
         if (value === '/quit') return 'quit';
         if (value === '/switch') return 'switch';
         if (value === '/help') { help(); continue; }
-        if (value === '/state') {
+        if (value === '/state' || value === '/balance') {
             status = await request(`/__test-console/clients/${status.client.id}`);
-            printStatus(status);
+            value === '/state' ? printStatus(status) : console.log(`Points: ${status.balance.availableBalance}`);
             continue;
         }
-        if (value === '/balance') {
-            status = await request(`/__test-console/clients/${status.client.id}`);
-            console.log(`Points: ${status.balance.availableBalance}`);
-            continue;
-        }
-        if (value === '/ai') {
-            status = await configureAi(status.client.id, status);
-            continue;
-        }
+        if (value === '/ai') { status = await configureAi(status.client.id, status); continue; }
         if (value === '/points' || value.startsWith('/points ')) {
             let amount = Number(value.slice('/points'.length).trim());
             if (!Number.isSafeInteger(amount) || amount === 0) amount = await askInteger('Points to add:', 100, 1);
@@ -201,7 +145,6 @@ const runClient = async (status) => {
             console.log(`Points: ${adjusted.balance.availableBalance}`);
             continue;
         }
-
         const result = await request(`/__test-console/clients/${status.client.id}/messages`, { method: 'POST', body: JSON.stringify({ text: value }) });
         if (result.response?.text) console.log(`← ${result.response.text}`);
         else console.log(`← [${result.outcome.type}] ${JSON.stringify(result.outcome.details || {})}`);
