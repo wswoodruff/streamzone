@@ -40,7 +40,9 @@ AI, and response-delivery concerns must remain replaceable.
   per-streamer text commands, memberships, and invitations. Database tables use the
   models' singular PascalCase names.
 - Command configuration now has authenticated list/create/update/delete endpoints. The
-  listing hides disabled commands unless requested. There is no chat ingestion or execution yet.
+  listing hides disabled commands unless requested. A provider-neutral runtime contract
+  and composable execution pipeline exist; provider ingestion and concrete production
+  stage integrations are not connected yet.
 - Membership roles and centralized capabilities protect management reads and writes;
   invitations provide the membership onboarding path and streamer creation establishes
   its creator as an owner atomically.
@@ -88,7 +90,14 @@ create or imply a `StreamerMembership`.
 
 Use a pipeline with explicit contracts:
 
-`provider adapter -> normalized ChatMessage -> command matcher -> policy checks -> command executor -> normalized ChatResponse -> provider adapter`
+`provider adapter -> ChatMessage -> InteractionContext -> runtime stages -> InteractionOutcome + ChatResponse -> provider adapter`
+
+The ordered runtime stages are deduplication, identity resolution, relationship refresh,
+stream-session resolution, moderation, command matching, cooldowns, execution,
+accounting, audit, and response delivery. Every stage accepts only provider-neutral
+contracts and injected domain functions, so it is independently unit-testable without
+installing Twitch or YouTube SDKs. Command matching must inspect `ChatMessage.text` and
+enrich `InteractionContext`; it must never receive a provider event object.
 
 Keep configuration (commands, permissions, templates), runtime state (cooldowns,
 deduplication), and audit history separate. Start with deterministic text templates;
@@ -102,7 +111,12 @@ add AI-backed executors only after authorization, limits, and observability are 
 - Disabled commands are hidden from the authenticated listing by default; management
   clients can request them with `includeDisabled=true`.
 - Cooldowns are configured in seconds, from `0` through one day. Runtime enforcement is
-  intentionally deferred until an execution pipeline exists.
+  keyed by an explicit `global`, `streamer`, `session`, or `participant` scope. The
+  centralized key builder rejects missing scopes and identifiers; stages must not build
+  cooldown strings ad hoc.
+- Runtime completion is represented by one of the structured outcomes `ignored`,
+  `cooldown`, `unauthorized`, `insufficient_points`, `accepted`, `fulfilled`, `failed`,
+  or `refunded`. Audit and delivery consume these outcomes rather than provider results.
 - Templates are stored as text but are not rendered yet. A future renderer must use an
   allowlist of variables and must escape output appropriate to the destination.
 - Tenant authorization precedes provider credentials and live chat connections.
@@ -161,10 +175,10 @@ Completed prerequisites remain here to make the required execution order explici
   Streamzone-owned session lifecycle, associate provider `Stream` records without using
   them as the runtime boundary, create unique session participants by `ChatUser`, and
   test reconnect, multi-provider, lifecycle, and tenant-isolation behavior.
-- [ ] **Normalize chat contracts and implement runtime execution.** Add provider-neutral
-  message/response objects, configurable deterministic matching, argument extraction,
-  cooldown policy, safe allowlisted template rendering, output limits, and structured
-  outcomes, all covered without provider SDKs.
+- [ ] **Connect deterministic command execution to the normalized runtime.** Implement
+  configurable matching and argument extraction against `ChatMessage`, safe allowlisted
+  template rendering, output limits, and concrete service integrations for the existing
+  provider-neutral pipeline.
 - [ ] **Build the first provider adapter.** Choose Twitch or YouTube based on explicit
   product priority; isolate credentials, reconnect/backoff, event deduplication, and send
   limits behind an adapter interface.
@@ -192,6 +206,12 @@ provider connections. Never log session tokens, provider credentials, full AI pr
 or unredacted sensitive chat content.
 
 ## Progress log
+
+- **2026-09-06 — Provider-neutral runtime boundary:** added validated `ChatMessage`,
+  `ChatResponse`, `InteractionContext`, and structured `InteractionOutcome` contracts;
+  an ordered, dependency-injected runtime pipeline and unit-testable stages; explicit
+  cooldown scopes and centralized key construction; and command persistence/validation
+  for cooldown scope. Validation: `npm test`, `npm run test:syntax`.
 
 - **2026-09-03 — Command configuration foundation:** added the commands migration/model,
   streamer relationship, scoped service operations, authenticated mutation routes,

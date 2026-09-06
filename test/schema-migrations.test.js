@@ -29,7 +29,8 @@ else {
         require('../migrations/009-create-stream-session-state'),
         require('../migrations/010-create-participants'),
         require('../migrations/011-create-point-economy'),
-        require('../migrations/012-create-rewards')
+        require('../migrations/012-create-rewards'),
+        require('../migrations/013-add-command-cooldown-scope')
     ];
     const Streamer = require('../lib/models/streamer');
     const User = require('../lib/models/user');
@@ -80,6 +81,7 @@ else {
         const [sourceId] = await knex('Source').insert({ streamerId, provider: 'twitch', channelId: 'alice-channel' });
         await knex('Stream').insert({ sourceId, externalId: 'live-1', title: 'Live now' });
         await knex('Command').insert({ streamerId, name: 'hello', responseTemplate: 'Hello!' });
+        Assert.equal((await knex('Command').first()).cooldownScope, 'streamer');
         const [userId] = await knex('User').insert({ email: 'alice@example.com', displayName: 'Alice', passwordHash: 'hash' });
         await knex('Session').insert({ id: 'a'.repeat(64), userId, expiresAt: new Date(Date.now() + 60_000).toISOString() });
         await knex('StreamerMembership').insert({ userId, streamerId, role: 'owner' });
