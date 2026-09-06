@@ -1,43 +1,69 @@
-name: Playwright UI
+name: CI
 
-on:
+"on":
   push:
-    branches:
-      - test/playwright-ui
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  validate:
+  unit:
+    name: Unit and syntax
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - name: Install dependencies
+          cache-dependency-path: package-lock.json
+      - name: Clean dependency install
         run: npm ci
-      - name: Install Chromium
+      - name: Unit tests
+        run: npm test
+      - name: Syntax checks
+        run: npm run test:syntax
+
+  browser:
+    name: Playwright behavior
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Clean dependency install
+        run: npm ci
+      - name: Cache Playwright browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+      - name: Install Chromium and system dependencies
         run: npx playwright install --with-deps chromium
       - name: Playwright behavior tests
         run: npm run test:e2e
-      - name: Capture UI screenshots
+      - name: Capture UI review screenshots
         if: always()
+        continue-on-error: true
         run: npm run ui:capture
-      - name: Unit tests
-        if: always()
-        run: npm test
-      - name: Syntax checks
-        if: always()
-        run: npm run test:syntax
-      - name: Upload UI review artifacts
+      - name: Upload Playwright artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-ui
-          if-no-files-found: error
-          path: artifacts/ui/
+          name: playwright-ui-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            artifacts/ui/
+            artifacts/playwright/
