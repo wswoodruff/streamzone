@@ -6,6 +6,7 @@
   "main": "lib/index.js",
   "scripts": {
     "start": "node server.js",
+    "bootstrap:owners": "node scripts/bootstrap-streamer-owners.js",
     "test": "node --test",
     "test:syntax": "find . -path ./node_modules -prune -o -name '*.js' -type f -print0 | xargs -0 -n1 node --check"
   },
