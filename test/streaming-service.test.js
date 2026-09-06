@@ -56,3 +56,88 @@ Test('stream updates authorize through the stream source hierarchy', async () =>
     await service.updateStream(2, 12, 'manageStreams', { title: 'Updated' });
     Assert.deepEqual(authorizationArgs, [2, 12, 'manageStreams']);
 });
+
+const transactionalModels = ({ rejectMembership = false } = {}) => {
+    const state = { streamers: [], memberships: [] };
+    const Streamer = {
+        transaction: async (operation) => {
+            const transaction = {
+                streamers: state.streamers.map((row) => ({ ...row })),
+                memberships: state.memberships.map((row) => ({ ...row }))
+            };
+            const result = await operation(transaction);
+            state.streamers = transaction.streamers;
+            state.memberships = transaction.memberships;
+            return result;
+        },
+        query: (transaction) => ({
+            insert: async (streamer) => {
+                const created = { id: transaction.streamers.length + 1, ...streamer };
+                transaction.streamers.push(created);
+                return created;
+            }
+        })
+    };
+    const StreamerMembership = {
+        query: (transaction) => ({
+            insert: async (membership) => {
+                if (rejectMembership) throw new Error('membership insert failed');
+                transaction.memberships.push(membership);
+                return membership;
+            }
+        })
+    };
+    return { state, Streamer, StreamerMembership };
+};
+
+Test('streamer creation returns its owner membership from the same transaction', async () => {
+    const models = transactionalModels();
+    const service = new (loadService())();
+    service.server = { models: () => models };
+
+    const result = await service.createStreamer(8, { slug: 'creator', displayName: 'Creator' });
+
+    Assert.deepEqual(result, {
+        streamer: { id: 1, slug: 'creator', displayName: 'Creator' },
+        membership: { userId: 8, streamerId: 1, role: 'owner' }
+    });
+    Assert.deepEqual(models.state.streamers, [result.streamer]);
+    Assert.deepEqual(models.state.memberships, [result.membership]);
+});
+
+Test('failed owner membership creation rolls back the streamer insert', async () => {
+    const models = transactionalModels({ rejectMembership: true });
+    const service = new (loadService())();
+    service.server = { models: () => models };
+
+    await Assert.rejects(
+        service.createStreamer(8, { slug: 'orphan', displayName: 'Orphan' }),
+        /membership insert failed/
+    );
+    Assert.deepEqual(models.state.streamers, []);
+    Assert.deepEqual(models.state.memberships, []);
+});
+
+Test('streamer creation route passes the authenticated user ID and returns both records', async () => {
+    const originalLoad = Module._load;
+    Module._load = (request, parent, isMain) => request === '../../validation/streamers' ? { payload: {} } : originalLoad(request, parent, isMain);
+    let route;
+    try { route = require('../lib/routes/streamers/create'); }
+    finally { Module._load = originalLoad; }
+    let args;
+    const expected = { streamer: { id: 4 }, membership: { userId: 17, streamerId: 4, role: 'owner' } };
+    const request = {
+        auth: { credentials: { id: 17 } },
+        payload: { slug: 'creator', displayName: 'Creator' },
+        services: () => ({ streamingService: { createStreamer: async (...values) => {
+            args = values;
+            return expected;
+        } } })
+    };
+    const response = { code: (statusCode) => ({ statusCode, source: expected }) };
+
+    const result = await route.handler(request, { response: () => response });
+
+    Assert.deepEqual(args, [17, request.payload]);
+    Assert.deepEqual(result, { statusCode: 201, source: expected });
+});
