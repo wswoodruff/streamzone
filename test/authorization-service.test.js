@@ -113,3 +113,29 @@ Test('membership additions run inside a transaction', async () => {
     Assert.equal(transactionUsed, true);
     Assert.deepEqual(inserted, { userId: 2, streamerId: 9, role: 'editor' });
 });
+
+Test('non-members receive a not-found error without a resource existence disclosure', async () => {
+    const Service = loadService();
+    const service = new Service();
+    service.server = { models: () => ({
+        StreamerMembership: { query: () => ({ findOne: async () => undefined }) }
+    }) };
+
+    await Assert.rejects(
+        service.requireCapability(8, 99, 'readManagement'),
+        (error) => error instanceof Service.ResourceNotFoundError && error.code === 'NOT_FOUND'
+    );
+});
+
+Test('members lacking a capability receive a forbidden error', async () => {
+    const Service = loadService();
+    const service = new Service();
+    service.server = { models: () => ({
+        StreamerMembership: { query: () => ({ findOne: async () => ({ role: 'viewer' }) }) }
+    }) };
+
+    await Assert.rejects(
+        service.requireCapability(8, 9, 'manageStreams'),
+        (error) => error instanceof Service.AuthorizationError && error.code === 'FORBIDDEN'
+    );
+});
