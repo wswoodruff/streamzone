@@ -1,93 +1,138 @@
 # Streamzone
 
-Streamzone is a multi-streamer platform for interactive livestream chat experiences. It connects provider-neutral chat commands and standalone channel features such as `!ai` to bot-powered interactions across streaming providers. The server uses Hapi, hapipal, Vision/Handlebars, Schwifty/Objection/Knex, and Schmervice.
+Streamzone is a pre-v1 multi-tenant platform for interactive livestream chat experiences. The application keeps provider-specific chat transport outside the domain/runtime layer so commands, rewards, points, and standalone AI can operate against the same internal contracts across streaming providers.
 
-## Domain model
+The server uses Hapi and hapipal, Vision/Handlebars for server-rendered management UI, Schwifty/Objection/Knex with SQLite for local persistence, Schmervice for application services, and Hapi Cookie for authenticated web sessions.
 
-- A **streamer** is a creator hosted by Streamzone and owns provider **sources**.
-- A **StreamSession** is a Streamzone-owned interaction/accounting window for one streamer. It may encompass multiple provider streams for a simulcast.
-- A **stream** is a provider broadcast. Every stream belongs to exactly one same-tenant `StreamSession` from creation; there is no ungrouped compatibility state.
-- A **command** is a streamer-specific deterministic text response with cooldown and chat-role configuration. Command chat roles are `everyone`, `moderator`, `supermod`, and `owner`.
-- **AI** is a standalone streamer/channel capability configured by `AiFeatureConfiguration`. `AiInvocation` is its execution/accounting record. AI is not a reward fulfillment type or reward executor.
-- A **reward** is fulfilled either by the deterministic bot executor or manually. `RewardExecutorConfiguration` stores deterministic executor details only.
+The remaining delivery roadmap lives in [`STREAMZONE_PLAN.md`](STREAMZONE_PLAN.md).
 
-Web accounts and audience identities are separate concerns: `User` plus `StreamerMembership` is the creator-dashboard authorization boundary; `ChatUser`, `ChatIdentity`, `ChannelRelationship`, `StreamerParticipant`, and `StreamSessionParticipant` describe livestream audience identity and participation and never grant dashboard access.
+## Current architecture
 
-The executable roadmap and future-agent handoff live in [`STREAMZONE_PLAN.md`](STREAMZONE_PLAN.md).
+- `User` and `StreamerMembership` define authenticated creator-team access. Dashboard roles are `viewer`, `editor`, `admin`, and `owner`.
+- `ChatUser`, `ChatIdentity`, `ChannelRelationship`, `StreamerParticipant`, and `StreamSessionParticipant` represent livestream audience identity and participation. Audience/provider relationships never grant dashboard access.
+- A `Streamer` owns provider `Source` records. A `Source` identifies a channel on Twitch or YouTube.
+- A `StreamSession` is the Streamzone-owned runtime/accounting window for one streamer. A provider `Stream` is one broadcast occurrence on one `Source`, and every `Stream` belongs to exactly one same-streamer `StreamSession`.
+- Commands are streamer-scoped deterministic command definitions with response templates, cooldowns, and required chat roles (`everyone`, `moderator`, `supermod`, `owner`).
+- `lib/runtime/` defines the provider-neutral `ChatMessage`, `InteractionContext`, ordered runtime stages, `InteractionOutcome`, and `ChatResponse` contracts. Provider ingestion and concrete production execution are not yet wired end to end.
+- Durable interaction state lives in `StreamSessionState`, while cooldown/deduplication state uses the replaceable `RuntimeState` interface. The default server uses an in-process runtime-state implementation.
+- Points and rewards are separate from AI. Rewards use deterministic-bot or manual fulfillment; standalone AI uses `AiFeatureConfiguration`, versioned streamer instructions, and `AiInvocation`.
+- `migrations/001-initial-schema.js` defines the complete relational schema for a fresh deployment.
 
-## Run locally
+## Local setup
 
 Requires Node.js 22 or newer.
 
 ```sh
-npm install
+npm ci
 npm start
 ```
 
-The service listens on `http://localhost:3000` by default. On startup, Schwifty creates and migrates `streamzone.sqlite` from the single canonical greenfield migration. Override defaults with `HOST`, `PORT`, and `DATABASE_FILE`.
+The application listens on `http://localhost:3000` by default. Schwifty runs the schema migration at startup against `streamzone.sqlite`. Override the defaults with `HOST`, `PORT`, and `DATABASE_FILE`.
 
-Run validation with:
+Create an account at `/register` or sign in at `/login`. Authenticated creator management starts at `/dashboard`.
 
-```sh
-npm test
-npm run test:syntax
-npm run test:e2e
-npm run ui:capture
-```
-
-The Playwright harness starts the real Hapi application against a temporary SQLite database, seeds deterministic owner/management data, and authenticates through the real `/login` cookie-session flow. `npm run test:e2e` runs behavioral Chromium coverage with one worker. `npm run ui:capture` writes deterministic desktop and mobile dashboard screenshots to `artifacts/ui/`; that directory is intentionally ignored and screenshots are review artifacts rather than pixel-diff CI gates.
-
-Playwright requires its Chromium binary in addition to npm dependencies. Install it with:
+Playwright also needs Chromium installed locally:
 
 ```sh
 npx playwright install chromium
 ```
 
-## Authentication and authorization
-
-Create an account at `/register` or sign in at `/login` to access `/dashboard`. Mutating management routes require the authenticated session cookie. Public catalog reads and authenticated management reads are deliberately separate.
-
-Membership roles are `viewer`, `editor`, `admin`, and `owner`. Viewers may read management data; editors additionally manage sources, streams/sessions, commands, and rewards; admins additionally manage memberships and invitations; owners additionally delete streamers and transfer ownership. Tenant-scoped resources return `404` to authenticated non-members and `403` to members lacking the required capability.
-
-## Streams and sessions
-
-Create the Streamzone session first, then create each provider broadcast inside it. A simulcast uses the same `streamSessionId` for one stream per source:
+Run the local quality gates with:
 
 ```sh
-curl -X POST http://localhost:3000/streamers/1/stream-sessions \
-  -H 'content-type: application/json' \
-  -d '{"title":"Friday stream","status":"scheduled"}'
-
-curl -X POST http://localhost:3000/streams \
-  -H 'content-type: application/json' \
-  -d '{"sourceId":1,"streamSessionId":1,"externalId":"video-id","title":"Friday stream","status":"scheduled"}'
+npm test
+npm run test:syntax
+npm run test:e2e
 ```
 
-Authenticated management clients can list sessions with `GET /streamers/{streamerId}/stream-sessions` and update lifecycle state with `PATCH /streamers/{streamerId}/stream-sessions/{streamSessionId}`. Session association is immutable on the stream update surface.
-
-## Commands
-
-Configure a command for a streamer:
+Generate review screenshots separately with:
 
 ```sh
-curl -X POST http://localhost:3000/streamers/1/commands \
-  -H 'content-type: application/json' \
-  -d '{"name":"hello","responseTemplate":"Welcome, {{user}}!","cooldownSeconds":10,"requiredChatRole":"everyone"}'
+npm run ui:capture
 ```
 
-Use `PATCH` or `DELETE` on `/streamers/{streamerId}/commands/{commandId}`. The authenticated list hides disabled commands by default; management clients can request `includeDisabled=true`.
+## Owner dashboard
 
-## Session and runtime state
+`/dashboard` is the authenticated server-rendered management shell. It exposes current streamer context plus command management, creator-team/invitation management, rewards and points controls, standalone AI configuration, and streamer instruction workflows.
 
-Durable interaction state is accessed through `StreamSessionStateService`, keyed by `(streamSessionId, namespace, key)`. Runtime cooldowns and high-volume deduplication use the separate `RuntimeState` interface. Both are scoped to the explicit StreamSession lifecycle rather than provider reconnects or legacy stream rows.
+Stream topology is managed at `/dashboard/stream-management`, where authorized users can manage `Source` records, `StreamSession` lifecycle, and provider `Stream` occurrences. The UI keeps StreamSession and provider-broadcast concepts distinct: create/select the Streamzone session, then attach one provider occurrence per source to that session.
+
+Command management supports create, edit, enable/disable, and delete flows with cooldown scope and required-chat-role controls. Disabled commands remain visible to management so they can be re-enabled.
+
+## Management authorization
+
+Management authorization is capability-based and tenant-scoped:
+
+| Role | Capabilities |
+| --- | --- |
+| `viewer` | Read management data. |
+| `editor` | Viewer access plus manage sources, streams/sessions, commands, rewards/fulfillment, standalone AI configuration, and AI instruction drafts. |
+| `admin` | Editor access plus manage memberships/invitations and publish AI instructions. |
+| `owner` | Admin access plus delete the streamer and transfer ownership. |
+
+Authenticated non-members receive tenant-hiding `404` responses for scoped resources; members without the required capability receive `403`.
+
+These dashboard roles are separate from command chat roles. Command authorization uses `everyone`, `moderator`, `supermod`, and `owner` from `lib/runtime/chat-roles.js`.
+
+## StreamSession model
+
+A `StreamSession` is the durable Streamzone interaction window for a show/session and has `scheduled`, `live`, or `ended` lifecycle state. It can group multiple provider broadcasts for a simulcast.
+
+A `Stream` is a provider occurrence and has its own provider-facing status. At creation it must reference both a `Source` and a `StreamSession`, and the source/session must belong to the same streamer. A session can contain at most one stream per source. The session association is not changed through the stream update surface.
+
+Durable session-scoped application state is keyed by `(streamSessionId, namespace, key)` through `StreamSessionStateService`. High-volume deduplication and cooldown state remain behind `RuntimeState` so production infrastructure can replace the in-process implementation without changing command executors.
+
+## Rewards and points
+
+The point economy uses `PointAccount` for balances and `PointLedgerEntry` for auditable balance changes. Earning policies and participant activity are modeled separately from redemption.
+
+`RewardDefinition` supports two fulfillment types: `deterministicBot` and `manual`. `RewardExecutorConfiguration` stores deterministic executor configuration, and `RewardRedemption` records the participant, point cost, StreamSession context, status, and failure/fulfillment lifecycle.
+
+AI is not a reward fulfillment type and does not use reward executor records.
+
+## Standalone AI
+
+AI is a streamer-scoped channel feature configured by `AiFeatureConfiguration`. Configuration includes invocation command, provider/model identifiers, fixed point pricing, cooldowns, input/output limits, token limit, and timeout. Streamer instructions are versioned independently.
+
+`AiInvocation` is the execution/accounting record for an AI request and ties an invocation to a streamer, StreamSession, chat identity/user, configuration version, instruction version, point reservation, and execution status.
+
+The production server does not currently install a real AI provider. The local test console injects a deterministic mock provider so the standalone AI flow can be exercised without an external model request.
+
+## Test console
+
+The local test console exercises provider-neutral chat behavior against the normal services and database without a real streaming provider.
+
+Start the host in one terminal:
+
+```sh
+npm run console:host
+```
+
+Then attach one or more simulated chat clients:
+
+```sh
+npm run console
+```
+
+The host binds to `127.0.0.1:3010` by default and exposes its test-only routes only in that process. See [`TEST_CONSOLE.md`](TEST_CONSOLE.md) for setup, simulated chat roles, point controls, and standalone AI testing.
+
+## Playwright and CI
+
+`npm run test:e2e` runs behavioral Chromium coverage from `e2e/dashboard.spec.js`. The harness boots the real Hapi application against a temporary SQLite database, seeds deterministic owner/management state, and authenticates through the real `/login` cookie-session flow. Desktop and mobile projects run with one worker for deterministic stateful behavior.
+
+`npm run ui:capture` runs the separate screenshot spec and writes owner-dashboard and command-management screenshots to `artifacts/ui/`. These are review artifacts, not pixel-diff assertions.
+
+GitHub Actions performs clean `npm ci` installs, unit tests, syntax checks, and Playwright behavior tests. Chromium browser binaries are cached by `package-lock.json`, while `playwright install --with-deps chromium` still ensures the matching browser and Linux system dependencies are present. Screenshot capture is non-blocking and uploaded with Playwright artifacts for review.
 
 ## Project layout
 
-- `server/manifest.js` registers Schwifty, Schmervice, Hapi Cookie, Vision, and the application plugin.
-- `lib/index.js` asks haute-couture to discover and compose app components.
-- `lib/routes/` groups one route definition per file by resource.
-- `lib/models/` defines the current auth, streaming, audience, economy, rewards, instruction, and standalone AI persistence model.
-- `lib/runtime/chat-roles.js` is the runtime/domain source of truth for command chat roles. Application code does not import constants from migrations.
-- `lib/services/streaming-service.js` owns streamer/source/StreamSession/stream operations and session lifecycle reconciliation.
-- `migrations/001-initial-schema.js` is the complete relational schema for a fresh pre-v1 deployment. There are no historical conversion, backfill, or compatibility migrations.
-- `e2e/` contains the Playwright browser harness and deterministic review screenshot specs.
+- `server/manifest.js` configures Hapi, Schwifty, Schmervice, Cookie, Inert, Vision, SQLite, migrations, and the default runtime-state implementation.
+- `lib/index.js` uses haute-couture to discover and compose application components.
+- `lib/routes/` contains resource and server-rendered web routes.
+- `lib/services/` contains authorization, streaming, audience, economy, rewards, dashboard, instruction, and standalone AI services.
+- `lib/models/` contains the current persistence model.
+- `lib/runtime/` contains provider-neutral interaction contracts and stages.
+- `lib/runtime-state/` contains the replaceable runtime-state boundary and in-process implementation.
+- `migrations/001-initial-schema.js` is the fresh-deployment relational schema.
+- `tools/test-console/` contains the local provider-neutral chat harness.
+- `e2e/` contains Playwright fixtures, the test server, behavior specs, and review screenshot capture.

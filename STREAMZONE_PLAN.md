@@ -1,67 +1,73 @@
 # Streamzone delivery plan
 
-This file is the durable handoff for humans and future AI agents. Reconcile it with the code before selecting work; do not treat checked boxes as a substitute for inspection.
+This file is the durable handoff for the remaining pre-v1 work. Treat the repository as the source of truth and reconcile this plan with the current branch before starting a milestone.
 
 ## Product goal
 
-Build a dependable multi-tenant service where each streamer can configure rich chat commands once and run them consistently across streaming providers. Keep provider, AI, accounting, and response-delivery concerns replaceable and provider-neutral.
+Build a dependable multi-tenant service where streamers configure commands and channel features once and run them consistently across streaming providers. Provider transport, normalized runtime execution, accounting, AI, audit, and response delivery should remain explicit replaceable boundaries.
 
-## Current state
+## Implemented baseline
 
-- Hapi serves public stream data and an authenticated, tenant-scoped creator dashboard using hapipal, Vision, and Handlebars.
-- SQLite/Objection persistence is defined by one canonical greenfield migration. It directly creates the current auth, streaming, audience, StreamSession, participant, point/reward, instruction, and standalone AI schema without historical conversion or backfill steps.
-- Every provider `Stream` belongs to exactly one same-tenant `StreamSession` from creation. Authenticated session list/create/update endpoints make that invariant operable for management clients and simulcasts.
-- Command configuration has authenticated CRUD endpoints and a complete server-rendered dashboard management surface for create/edit/enable-disable/delete, validation, disabled-command visibility, cooldowns, and required chat roles.
-- Command chat authorization has one runtime/domain role set: `everyone`, `moderator`, `supermod`, and `owner`; application code does not import domain constants from migrations.
-- Provider-neutral audience identity, channel relationships, participant scopes, point accounting, deterministic/manual rewards, and standalone streamer AI configuration/invocation records are implemented.
-- AI is a standalone channel capability keyed by streamer. `AiInvocation` is the AI execution/accounting record; reward-scoped AI does not exist in the current architecture.
+- Hapi/hapipal serves public routes and authenticated creator management through Vision/Handlebars.
+- `User` plus `StreamerMembership` provides tenant-scoped dashboard authorization with `viewer`, `editor`, `admin`, and `owner` capabilities.
+- The owner-management UI covers team/invitations, rewards and points, standalone AI configuration/instructions, command CRUD, and stream/source/session management.
+- The fresh-deployment relational schema is defined in `migrations/001-initial-schema.js`.
+- Provider-neutral audience identity, channel relationships, streamer/session participation, activity accounting, point balances/ledger entries, rewards, and standalone AI persistence/services are present.
+- Every provider `Stream` is created inside one same-streamer `StreamSession`; simulcast streams share the StreamSession while retaining separate provider/source records.
+- Commands support normalized names, response templates, enable/disable state, cooldown seconds/scope, and chat roles `everyone`, `moderator`, `supermod`, and `owner`.
+- `lib/runtime/` defines `ChatMessage`, `InteractionContext`, the ordered runtime pipeline, `InteractionOutcome`, `ChatResponse`, command authorization, and cooldown behavior.
+- The local test console exercises provider-neutral chat services with deterministic identities/state and a mock AI provider.
+- Playwright covers authenticated owner-management behavior on desktop/mobile and can emit review screenshots.
+- GitHub Actions runs clean installs, unit tests, syntax checks, and Playwright behavioral coverage; screenshots are retained as non-blocking review artifacts.
 
-## Core decisions
+## Architecture invariants
 
-- A command belongs to exactly one streamer and its normalized name is unique within that streamer.
-- Command chat roles are exactly `everyone`, `moderator`, `supermod`, and `owner`, sourced from `lib/runtime/chat-roles.js`.
-- Cooldowns use explicit `global`, `streamer`, `session`, or `participant` scope.
-- Dashboard authorization derives only from authenticated `User` plus `StreamerMembership`; audience/provider relationships never grant creator-team access.
-- A `StreamSession` is Streamzone's accounting/runtime window. Every provider `Stream` is assigned to one same-tenant session at creation, and that association is not a nullable compatibility state or an update-time migration mechanism.
-- Rewards support `deterministicBot` and `manual` fulfillment only. `RewardExecutorConfiguration` remains for deterministic reward executor configuration.
-- AI is configured per streamer as a channel capability. It is not a reward, reward executor, or legacy fulfillment type.
-- This pre-v1 repository has one canonical `migrations/001-initial-schema.js`; do not reintroduce historical upgrade, conversion, dual-read, backfill, or compatibility migrations without an actual deployed-data requirement.
+- Dashboard authorization comes only from authenticated `User` + `StreamerMembership`; audience/provider relationships do not grant management access.
+- `Streamer` is the tenant boundary. Streamer-owned resources must be tenant-checked before mutation or disclosure.
+- `Source` represents a provider channel. `Stream` represents one provider broadcast occurrence. `StreamSession` represents the Streamzone runtime/accounting window.
+- Every `Stream` has a required `streamSessionId`, and its source and StreamSession belong to the same streamer.
+- Provider adapters translate external events to/from the contracts in `lib/runtime/`; provider payload shapes do not enter command execution.
+- The runtime stage order remains explicit: deduplication, identity resolution, relationship refresh, StreamSession resolution, moderation, command matching, command authorization, cooldowns, execution, accounting, audit, and response delivery.
+- Durable StreamSession state and high-volume runtime state remain separate abstractions.
+- Rewards use `deterministicBot` or `manual` fulfillment. Standalone AI is configured and accounted for through `AiFeatureConfiguration` and `AiInvocation`.
+- Management roles and command chat roles are separate authorization systems.
 
-## Runtime direction
+## Ready Queue
 
-Use the provider-neutral pipeline:
+Work in this order unless an explicit product decision changes a prerequisite.
 
-`provider adapter -> ChatMessage -> InteractionContext -> runtime stages -> InteractionOutcome + ChatResponse -> provider adapter`
+1. **First production provider adapter** — implement one real Twitch or YouTube adapter with credential isolation, connection lifecycle, reconnect/backoff, outbound send limits, and a narrow provider-neutral interface.
+2. **Provider chat ingestion** — consume provider chat events, normalize them to `ChatMessage`, enforce provider-event idempotency/deduplication, resolve identities/relationships, and bind messages to the active StreamSession.
+3. **Normalized runtime execution** — wire persisted commands into the existing runtime pipeline with command matching/arguments, safe allowlisted template rendering, output limits, concrete cooldown/runtime-state integration, and provider-neutral `ChatResponse` delivery.
+4. **Telemetry and audit** — implement the audit stage and structured operational telemetry for ingestion/execution/delivery outcomes with bounded metadata, correlation IDs, latency/error metrics, and secret/content redaction.
+5. **Production AI provider integration** — install a real provider behind the existing AI provider boundary and finish production controls for credentials, budgets, safety, timeouts, prompt-injection resistance, output limits, and failure accounting.
+6. **Production deployment hardening** — define deployment topology and persistent infrastructure, externalize runtime state as needed, add health/readiness checks, secret management, database backup/restore strategy, observability, and release/rollback procedures.
 
-Keep configuration, runtime state, accounting, and audit history separate. Provider adapters translate provider payloads into internal contracts and must not leak Twitch/YouTube event shapes into command execution.
+## Milestone boundary
 
-## Ready queue
+The next meaningful product milestone is one provider completing the full chat loop:
 
-Work in this order unless a documented prerequisite or explicit user instruction changes it.
+`provider event -> ChatMessage -> InteractionContext/runtime stages -> InteractionOutcome + ChatResponse -> provider send`
 
-- [x] Route composition with one route per file and parity tests. (2026-09-06)
-- [x] Membership schema, role capabilities, creator ownership, invitations, and tenant isolation. (2026-09-06)
-- [x] Provider-neutral audience identity and participant accounting scopes. (2026-09-06)
-- [x] **Greenfield schema + legacy purge.** Collapse historical migrations into one canonical schema; remove reward-scoped AI; require explicit StreamSession ownership; remove runtime imports from migrations; rebuild fresh-schema tests. (2026-09-06)
-- [x] **Add command management to the dashboard.** Provide accessible create/edit/enable-disable/delete forms with cooldown and required chat-role controls, validation/empty/error states, and route-level integration testability. (2026-09-06)
-- [ ] **Connect deterministic command execution to the normalized runtime.** Implement configurable matching/arguments, safe allowlisted template rendering, output limits, and concrete service integrations.
-- [ ] **Build the first provider adapter.** Choose Twitch or YouTube based on product priority; isolate credentials, reconnect/backoff, event deduplication, and send limits.
-- [ ] **Add execution audit and operational telemetry.** Persist bounded execution metadata and add structured logs/metrics without secrets or unnecessary chat content.
-- [ ] **Complete production AI channel configuration.** Build provider configuration, safety controls, budgets, conversation state, timeouts, and prompt-injection coverage around the existing streamer-scoped configuration and `AiInvocation` foundation.
+That milestone should use the existing management configuration and StreamSession/accounting model rather than introducing provider-specific execution paths.
 
 ## Quality gates
 
 Keep these green for every increment:
 
 ```sh
-npm install
+npm ci
 npm test
 npm run test:syntax
+npm run test:e2e
 ```
 
-Also boot `npm start` against a fresh SQLite database. Never log session tokens, provider credentials, full AI prompts, or unredacted sensitive chat content.
+For UI-affecting work, also run:
 
-## Progress log
+```sh
+npm run ui:capture
+```
 
-- **2026-09-06 — Greenfield schema and legacy purge:** replaced the historical migration chain with one canonical initial schema; removed reward-scoped AI schema/execution paths; made provider streams require an explicit same-tenant StreamSession; added minimal session management endpoints; centralized command chat roles in runtime domain code; rebuilt fresh-schema/session/reward coverage; and removed legacy migration/session assumptions from the local test console and documentation.
-- **2026-09-06 — Dashboard command management:** added the complete server-rendered command management surface with POST-redirect-GET mutations, canonical shared chat-role options, viewer read-only UX plus backend authorization, validation/error states, disabled-command visibility, route/integration coverage, and Playwright CRUD/capture coverage. Next milestone: deterministic command execution on the normalized runtime.
+Screenshot capture is for review and artifact retention; behavioral assertions remain the blocking browser gate.
+
+When runtime/server wiring changes, also boot `npm start` against a fresh SQLite database and exercise the affected management or test-console flow. Do not log session tokens, provider credentials, full AI prompts, or unredacted sensitive chat content.
