@@ -31,6 +31,16 @@ Run validation with:
 ```sh
 npm test
 npm run test:syntax
+npm run test:e2e
+npm run ui:capture
+```
+
+The Playwright harness starts the real Hapi application against a temporary SQLite database, seeds deterministic owner/management data, and authenticates through the real `/login` cookie-session flow. `npm run test:e2e` runs behavioral Chromium coverage with one worker. `npm run ui:capture` writes deterministic desktop and mobile dashboard screenshots to `artifacts/ui/`; that directory is intentionally ignored and screenshots are review artifacts rather than pixel-diff CI gates.
+
+Playwright requires its Chromium binary in addition to npm dependencies. Install it with:
+
+```sh
+npx playwright install chromium
 ```
 
 ## Authentication and authorization
@@ -80,3 +90,4 @@ Durable interaction state is accessed through `StreamSessionStateService`, keyed
 - `lib/runtime/chat-roles.js` is the runtime/domain source of truth for command chat roles. Application code does not import constants from migrations.
 - `lib/services/streaming-service.js` owns streamer/source/StreamSession/stream operations and session lifecycle reconciliation.
 - `migrations/001-initial-schema.js` is the complete relational schema for a fresh pre-v1 deployment. There are no historical conversion, backfill, or compatibility migrations.
+- `e2e/` contains the Playwright browser harness and deterministic review screenshot specs.
