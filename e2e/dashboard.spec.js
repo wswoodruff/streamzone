@@ -19,7 +19,7 @@ test('owner signs in, sees seeded management state, and signs out', async ({ pag
     await expect(page.getByText('Sunday Launch Show', { exact: true })).toBeVisible();
     await expect(page.getByText('Twitch', { exact: true })).toBeVisible();
     await expect(page.getByText('YouTube', { exact: true })).toBeVisible();
-    await expect(page.getByText('!schedule', { exact: true })).toBeVisible();
+    await expect(page.locator('#commands').getByRole('heading', { name: '!schedule' })).toBeVisible();
     await expect(page.getByText('Moderator · 15s session', { exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: 'Sign out' }).click();
@@ -39,7 +39,7 @@ test('owner manages invitations and standalone AI from the dashboard', async ({ 
     await expect(page.getByText('Hydrate', { exact: true })).toBeVisible();
     await expect(page.getByText('Watch time', { exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Standalone AI' })).toBeVisible();
-    await expect(page.getByText('!ask', { exact: true })).toBeVisible();
+    await expect(page.locator('#ai').getByRole('heading', { name: '!ask' })).toBeVisible();
     await expect(page.getByText('Streamer instructions', { exact: true })).toBeVisible();
 
     const rewardTypes = await page.locator('select[name="fulfillmentType"] option').allTextContents();
@@ -57,8 +57,8 @@ test('owner manages invitations and standalone AI from the dashboard', async ({ 
     await aiForm.getByLabel('Point cost').fill('30');
     await page.getByRole('button', { name: 'Save AI configuration' }).click();
     await expect(page.getByRole('status')).toContainText('Standalone AI configuration updated');
-    await expect(page.getByText('!askbot', { exact: true })).toBeVisible();
-    await expect(page.getByLabel('Invocation command')).toHaveValue('askbot');
+    await expect(page.locator('#ai').getByRole('heading', { name: '!askbot' })).toBeVisible();
+    await expect(aiForm.getByLabel('Invocation command')).toHaveValue('askbot');
 
     await page.getByText('Create instruction draft', { exact: true }).click();
     await page.getByLabel('Streamer instruction').fill('Answer channel questions with concise, relevant context.');
@@ -119,14 +119,17 @@ test('owner manages Sources, StreamSessions, and provider broadcasts from the st
     await expect(page.getByText('Streamzone runtime window', { exact: true })).toBeVisible();
     await expect(page.getByText('One occurrence on one Source', { exact: true })).toBeVisible();
 
-    await page.getByLabel('Provider', { exact: true }).selectOption('youtube');
-    await page.getByLabel('Provider channel ID').fill('managed-youtube-channel');
-    await page.getByRole('button', { name: 'Add source' }).click();
+    const sourceForm = page.locator('form[action="/dashboard/stream-management/sources"]');
+    await expect(sourceForm).toBeVisible();
+    await sourceForm.locator('select[name="provider"]').selectOption('youtube');
+    await sourceForm.locator('input[name="channelId"]').fill('managed-youtube-channel');
+    await sourceForm.getByRole('button', { name: 'Add source' }).click();
     await expect(page.getByRole('status')).toHaveText('Provider source added.');
     await expect(page.getByText('managed-youtube-channel', { exact: true })).toBeVisible();
 
-    await page.getByLabel('Session title').fill('E2E managed session');
-    await page.getByRole('button', { name: 'Create session' }).click();
+    const sessionForm = page.locator('form[action="/dashboard/stream-management/sessions"]');
+    await sessionForm.locator('input[name="title"]').fill('E2E managed session');
+    await sessionForm.getByRole('button', { name: 'Create session' }).click();
     await expect(page.getByRole('status')).toHaveText('StreamSession created.');
 
     const sessionRow = page.locator('.item-list li').filter({ hasText: 'E2E managed session' });
@@ -134,12 +137,13 @@ test('owner manages Sources, StreamSessions, and provider broadcasts from the st
     await sessionRow.getByRole('button', { name: 'Start session' }).click();
     await expect(page.getByRole('status')).toHaveText('StreamSession started.');
 
-    await page.getByLabel('Source', { exact: true }).selectOption({ label: 'YouTube · managed-youtube-channel' });
-    await page.getByLabel('StreamSession', { exact: true }).selectOption({ label: 'E2E managed session · Live' });
-    await page.getByLabel('Broadcast title (optional)').fill('E2E provider occurrence');
-    await page.getByLabel('Provider broadcast ID (optional)').fill('e2e-provider-id');
-    await page.getByLabel('State', { exact: true }).selectOption('live');
-    await page.getByRole('button', { name: 'Attach broadcast' }).click();
+    const broadcastForm = page.locator('form[action="/dashboard/stream-management/streams"]');
+    await broadcastForm.locator('select[name="sourceId"]').selectOption({ label: 'YouTube · managed-youtube-channel' });
+    await broadcastForm.locator('select[name="streamSessionId"]').selectOption({ label: 'E2E managed session · Live' });
+    await broadcastForm.locator('input[name="title"]').fill('E2E provider occurrence');
+    await broadcastForm.locator('input[name="externalId"]').fill('e2e-provider-id');
+    await broadcastForm.locator('select[name="status"]').selectOption('live');
+    await broadcastForm.getByRole('button', { name: 'Attach broadcast' }).click();
 
     await expect(page.getByRole('status')).toHaveText('Provider broadcast attached to the StreamSession.');
     const occurrenceRow = page.locator('.item-list li').filter({ hasText: 'E2E provider occurrence' });
