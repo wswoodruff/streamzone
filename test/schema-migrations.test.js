@@ -55,6 +55,20 @@ else {
         await createCommandTables.up(knex);
     };
 
+    Test('PascalCase migrations build a valid fresh schema', async (t) => {
+        const knex = await makeDatabase();
+        t.after(() => knex.destroy());
+
+        await migrateLowercaseSchema(knex);
+        await renameModelTables.up(knex);
+        await createStreamerMemberships.up(knex);
+        await createStreamerInvitations.up(knex);
+
+        Assert.deepEqual(await tableNames(knex), expectedTables);
+        Assert.deepEqual(await knex.raw('PRAGMA foreign_key_check'), []);
+        for (const table of expectedTables) Assert.equal(await knex.schema.hasTable(table), true);
+    });
+
     Test('forward migrations rename a populated lowercase schema and preserve its constraints and relations', async (t) => {
         const knex = await makeDatabase();
         t.after(async () => {

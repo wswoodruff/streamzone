@@ -46,15 +46,26 @@ Test('command creation delegates tenant authorization and normalizes its name', 
 Test('stream updates authorize through the stream source hierarchy', async () => {
     const service = new (loadService())();
     let authorizationArgs;
+    const transaction = {};
+    const Stream = {
+        transaction: (operation) => operation(transaction),
+        query: (usedTransaction) => {
+            Assert.equal(usedTransaction, transaction);
+            return { patchAndFetchById: async () => ({ id: 12 }) };
+        }
+    };
     service.server = {
         services: () => ({ authorizationService: {
-            requireStreamCapability: async (...args) => (authorizationArgs = args)
+            requireStreamCapability: async (...args) => {
+                authorizationArgs = args;
+                return { sourceId: 4, source: { streamerId: 5 } };
+            }
         } }),
-        models: () => ({ Stream: { query: () => ({ patchAndFetchById: async () => ({ id: 12 }) }) } })
+        models: () => ({ Stream, Source: {} })
     };
 
     await service.updateStream(2, 12, 'manageStreams', { title: 'Updated' });
-    Assert.deepEqual(authorizationArgs, [2, 12, 'manageStreams']);
+    Assert.deepEqual(authorizationArgs, [2, 12, 'manageStreams', transaction]);
 });
 
 const transactionalModels = ({ rejectMembership = false } = {}) => {
