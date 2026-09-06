@@ -22,12 +22,13 @@ else {
         require('../migrations/002-create-auth-tables'),
         require('../migrations/003-create-command-tables'),
         require('../migrations/004-create-streamer-memberships'),
-        require('../migrations/005-create-streamer-invitations')
+        require('../migrations/005-create-streamer-invitations'),
+        require('../migrations/006-create-chat-identities')
     ];
     const Streamer = require('../lib/models/streamer');
     const User = require('../lib/models/user');
 
-    const expectedTables = ['Command', 'Session', 'Source', 'Stream', 'Streamer', 'StreamerInvitation', 'StreamerMembership', 'User'];
+    const expectedTables = ['ChatIdentity', 'ChatUser', 'Command', 'Session', 'Source', 'Stream', 'Streamer', 'StreamerInvitation', 'StreamerMembership', 'User'];
 
     const makeDatabase = async () => {
         const knex = Knex({
@@ -89,6 +90,9 @@ else {
         Assert.deepEqual((await foreignKeys(knex, 'StreamerMembership')).sort((a, b) => a.from.localeCompare(b.from)), [
             { from: 'streamerId', referencedTable: 'Streamer', onDelete: 'CASCADE' },
             { from: 'userId', referencedTable: 'User', onDelete: 'CASCADE' }
+        ]);
+        Assert.deepEqual(await foreignKeys(knex, 'ChatIdentity'), [
+            { from: 'chatUserId', referencedTable: 'ChatUser', onDelete: 'CASCADE' }
         ]);
 
         await Assert.rejects(
