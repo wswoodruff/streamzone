@@ -114,7 +114,7 @@ Test('dashboard team and reward actions use existing authorization and reward se
     Assert.equal(rewardUpdate.statusCode, 303);
     const updatedReward = await context.models.RewardDefinition.query().findById(reward.id);
     Assert.equal(Number(updatedReward.pointCost), 90);
-    Assert.equal(updatedReward.enabled, false);
+    Assert.equal(Boolean(updatedReward.enabled), false);
     Assert.equal(updatedReward.fulfillmentType, 'deterministicBot');
     Assert.equal(updatedReward.eligibilityPolicy.membership, 'any');
 });
@@ -131,7 +131,7 @@ Test('standalone AI management updates configuration without reward coupling and
     Assert.equal(aiUpdate.statusCode, 303);
     Assert.match(aiUpdate.headers.location, /notice=ai-updated/);
     const configuration = await context.models.AiFeatureConfiguration.query().findById(streamer.id);
-    Assert.equal(configuration.enabled, true);
+    Assert.equal(Boolean(configuration.enabled), true);
     Assert.equal(configuration.invocationCommand, 'ask');
     Assert.equal(configuration.provider, 'openai');
     Assert.equal(configuration.model, 'gpt-5');
