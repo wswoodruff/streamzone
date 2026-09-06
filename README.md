@@ -45,6 +45,27 @@ passwords are salted and hashed with scrypt. Set a strong `COOKIE_PASSWORD` in d
 environments. Mutating API routes require an authenticated session, while the catalog
 `GET` routes remain public.
 
+Public catalog reads and authenticated management reads are deliberately separate.
+Public queries expose hosted streamers and streams without consulting or returning
+membership data. Management endpoints and dashboard queries instead scope results to
+the signed-in user's streamer memberships. For tenant-scoped resources, a signed-out
+request receives `401`; a signed-in non-member receives `404` (so tenant existence is
+not disclosed); and a member whose role lacks the capability receives `403`.
+
+### Membership roles
+
+| Role | Management reads | Sources, streams, commands | Memberships and invitations | Delete streamer | Transfer ownership |
+| --- | --- | --- | --- | --- | --- |
+| `viewer` | Yes | No | No | No | No |
+| `editor` | Yes | Yes | No | No | No |
+| `admin` | Yes | Yes | Yes | No | No |
+| `owner` | Yes | Yes | Yes | Yes | Yes |
+
+Admins may manage only roles below their own authority; owners may manage every role.
+After ownership has been established, every streamer must retain at least one owner, so
+the final owner cannot be removed or demoted. Ownership transfer promotes an existing
+member to owner and demotes the transferring owner to admin in one transaction.
+
 Creating a streamer atomically creates an `owner` membership for the authenticated
 caller. The response contains both records as `{ "streamer": {...}, "membership":
 {...} }`.
@@ -121,12 +142,16 @@ existing command. The authenticated `GET` endpoint returns enabled commands only
 
 - `server/manifest.js` registers Schwifty, Schmervice, and the application plugin.
 - `lib/index.js` asks haute-couture to discover and compose app components.
+- `lib/routes/` groups routes by resource, with exactly one route definition per file;
+  haute-couture discovers these modules and route-composition tests guard HTTP parity.
 - `lib/models/` defines streamers, provider sources, streams, and their relationships.
 - `lib/models/command.js` defines per-streamer command configuration.
 - `lib/services/streaming-service.js` owns database operations for the streaming domain.
 - `lib/services/auth-service.js` owns password verification and revocable sessions.
-- `lib/routes/streaming.js` exposes the initial management API.
-- `lib/routes/web.js` serves the public site, account flow, and dashboard with Vision.
-- `migrations/` contains the relational database schema.
+- `lib/routes/commands/`, `invitations/`, `memberships/`, `sources/`, `streamers/`, and
+  `streams/` expose the management API; `lib/routes/web/` serves pages and account flow.
+- `migrations/` contains the relational database schema. Tables use singular PascalCase
+  names matching their models, such as `User`, `Streamer`, `StreamerMembership`, and
+  `Command`; new models and migrations must follow the same convention.
 
 Run checks with `npm test` and `npm run test:syntax`.
