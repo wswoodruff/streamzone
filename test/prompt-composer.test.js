@@ -9,7 +9,7 @@ const valid = (overrides = {}) => ({
     streamerInstructionVersion: { id: 42, content: 'Use the cheerful channel voice.' },
     runtimeContext: { channel: 'alice', live: true },
     conversationSummary: 'Previously discussed music.', participantInput: 'hello',
-    provider: 'provider', model: 'model', maxTokens: 100, ...overrides
+    provider: 'provider', model: 'model', maxOutputTokenCount: 100, ...overrides
 });
 
 Test('participant input cannot alter roles, trusted context, policy, or tools', () => {

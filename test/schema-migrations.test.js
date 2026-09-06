@@ -32,12 +32,14 @@ else {
         require('../migrations/012-create-rewards'),
         require('../migrations/013-add-command-cooldown-scope'),
         require('../migrations/014-create-ai-reward-executions'),
-        require('../migrations/015-version-ai-instructions')
+        require('../migrations/015-version-ai-instructions'),
+        require('../migrations/016-instruction-lifecycle'),
+        require('../migrations/017-ai-feature-pricing')
     ];
     const Streamer = require('../lib/models/streamer');
     const User = require('../lib/models/user');
 
-    const expectedTables = ['AiRewardExecution', 'ChannelRelationship', 'ChatIdentity', 'ChatUser', 'Command', 'EarningPolicy', 'ParticipantActivityEvent', 'PointAccount', 'PointLedgerEntry', 'PointReservationSettlement', 'RewardDefinition', 'RewardExecutorConfiguration', 'RewardRedemption', 'Session', 'Source', 'Stream', 'StreamSession', 'StreamSessionParticipant', 'StreamSessionState', 'Streamer', 'StreamerInstructionVersion', 'StreamerInvitation', 'StreamerMembership', 'StreamerParticipant', 'User'];
+    const expectedTables = ['AiFeatureConfiguration', 'AiRewardExecution', 'ChannelRelationship', 'ChatIdentity', 'ChatUser', 'Command', 'EarningPolicy', 'ParticipantActivityEvent', 'PointAccount', 'PointLedgerEntry', 'PointReservationSettlement', 'RewardDefinition', 'RewardExecutorConfiguration', 'RewardRedemption', 'Session', 'Source', 'Stream', 'StreamSession', 'StreamSessionParticipant', 'StreamSessionState', 'Streamer', 'StreamerInstructionVersion', 'StreamerInvitation', 'StreamerMembership', 'StreamerParticipant', 'User'];
 
     const makeDatabase = async () => {
         const knex = Knex({
