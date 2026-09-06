@@ -1,0 +1,231 @@
+{{#if currentStreamer}}
+<div class="management-shell">
+  <aside class="management-sidebar" aria-label="Current creator workspace">
+    <div class="workspace-identity">
+      <span class="eyebrow">Current creator</span>
+      <strong>{{currentStreamer.displayName}}</strong>
+      <span class="muted">@{{currentStreamer.slug}}</span>
+      <span class="role-badge">{{currentStreamer.roleLabel}} access</span>
+    </div>
+    {{> management-nav}}
+    <div class="sidebar-account">
+      <span class="eyebrow">Signed in</span>
+      <span>{{user.displayName}}</span>
+    </div>
+  </aside>
+
+  <div class="management-content">
+    <section class="dashboard-hero" aria-labelledby="stream-management-title">
+      <div>
+        <p class="eyebrow">Provider-neutral stream management</p>
+        <h1 id="stream-management-title">Streams &amp; sources</h1>
+        <p class="lede">Manage provider channels, provider broadcast occurrences, and the Streamzone StreamSessions that group them into one runtime and accounting window.</p>
+      </div>
+      <form class="streamer-switcher" method="get" action="/dashboard/stream-management">
+        <label for="streamerId">Creator workspace</label>
+        <div class="inline-control">
+          <select id="streamerId" name="streamerId">
+            {{#each streamers}}
+              <option value="{{id}}" {{#if selected}}selected{{/if}}>{{displayName}} (@{{slug}})</option>
+            {{/each}}
+          </select>
+          <button class="button button--secondary" type="submit">Switch</button>
+        </div>
+      </form>
+    </section>
+
+    {{#if notice}}<p class="panel status-pill--live" role="status">{{notice}}</p>{{/if}}
+    {{#if error}}<p class="error" role="alert">{{error}}</p>{{/if}}
+
+    <article class="panel">
+      <div class="panel-title-row"><h2>Two related records, two jobs</h2><span class="capability">Provider neutral</span></div>
+      <div class="split-grid">
+        <div>
+          <p class="eyebrow">StreamSession</p>
+          <h3>Streamzone runtime window</h3>
+          <p class="muted">Owns the Streamzone lifecycle, runtime state, and accounting context. One session can group several provider broadcasts for a simulcast.</p>
+        </div>
+        <div>
+          <p class="eyebrow">Provider broadcast</p>
+          <h3>One occurrence on one Source</h3>
+          <p class="muted">Represents a provider-side scheduled, live, or offline broadcast. It belongs to one Source and is attached to exactly one StreamSession when created.</p>
+        </div>
+      </div>
+    </article>
+
+    <section class="management-section" id="sessions" aria-labelledby="sessions-heading">
+      <div class="section-heading">
+        <div><p class="eyebrow">Runtime &amp; accounting</p><h2 id="sessions-heading">StreamSessions</h2></div>
+        {{#if permissions.manageStreams}}<span class="capability capability--manage">Can manage</span>{{else}}<span class="capability">Read only</span>{{/if}}
+      </div>
+
+      {{#if permissions.manageStreams}}
+        <article class="panel">
+          <h3>Create a StreamSession</h3>
+          <p class="muted">Create the Streamzone session first. Provider broadcast occurrences can then be attached to it.</p>
+          <form method="post" action="/dashboard/stream-management/sessions">
+            <input type="hidden" name="streamerId" value="{{currentStreamer.id}}">
+            <label for="session-title">Session title
+              <input id="session-title" name="title" maxlength="255" required placeholder="Friday community stream">
+            </label>
+            <label for="scheduled-at">Scheduled time (UTC, optional)
+              <input id="scheduled-at" type="datetime-local" name="scheduledAt">
+            </label>
+            <button type="submit">Create session</button>
+          </form>
+        </article>
+      {{/if}}
+
+      {{#if sessions.length}}
+        <article class="panel">
+          <ul class="item-list">
+            {{#each sessions}}
+              <li>
+                <div>
+                  <strong>{{title}}</strong>
+                  <span class="muted">{{timingLabel}} · {{streamCountLabel}} · StreamSession #{{id}}</span>
+                </div>
+                <div>
+                  <span class="status-pill status-pill--{{statusTone}}">{{statusLabel}}</span>
+                  {{#if canStart}}
+                    <form class="inline-form" method="post" action="/dashboard/stream-management/sessions/{{id}}/lifecycle">
+                      <input type="hidden" name="streamerId" value="{{../currentStreamer.id}}">
+                      <input type="hidden" name="action" value="start">
+                      <button class="button button--quiet" type="submit">Start session</button>
+                    </form>
+                  {{/if}}
+                  {{#if canEnd}}
+                    <form class="inline-form" method="post" action="/dashboard/stream-management/sessions/{{id}}/lifecycle">
+                      <input type="hidden" name="streamerId" value="{{../currentStreamer.id}}">
+                      <input type="hidden" name="action" value="end">
+                      <button class="button button--quiet" type="submit">End session</button>
+                    </form>
+                  {{/if}}
+                </div>
+              </li>
+            {{/each}}
+          </ul>
+        </article>
+      {{else}}
+        {{> empty-state title="No StreamSessions yet" body="Create the Streamzone runtime/accounting window before attaching any provider broadcast occurrences."}}
+      {{/if}}
+    </section>
+
+    <section class="management-section" id="sources" aria-labelledby="sources-heading">
+      <div class="section-heading">
+        <div><p class="eyebrow">Provider channels</p><h2 id="sources-heading">Sources</h2></div>
+        {{#if permissions.manageSources}}<span class="capability capability--manage">Can manage</span>{{else}}<span class="capability">Read only</span>{{/if}}
+      </div>
+
+      {{#if permissions.manageSources}}
+        <article class="panel">
+          <h3>Add a source</h3>
+          <p class="muted">A Source is the provider channel identity Streamzone uses to associate provider broadcasts with this creator. No provider SDK connection is performed here.</p>
+          <form method="post" action="/dashboard/stream-management/sources">
+            <input type="hidden" name="streamerId" value="{{currentStreamer.id}}">
+            <label for="source-provider">Provider
+              <select id="source-provider" name="provider" required>
+                <option value="twitch">Twitch</option>
+                <option value="youtube">YouTube</option>
+              </select>
+            </label>
+            <label for="source-channel-id">Provider channel ID
+              <input id="source-channel-id" name="channelId" maxlength="255" required placeholder="channel-id-from-provider">
+            </label>
+            <button type="submit">Add source</button>
+          </form>
+        </article>
+      {{/if}}
+
+      {{#if sources.length}}
+        <div class="compact-grid">
+          {{#each sources}}
+            <article class="panel source-card">
+              <div class="panel-title-row"><h3>{{providerName}}</h3><span class="status-pill {{#if enabled}}status-pill--live{{else}}status-pill--neutral{{/if}}">{{statusLabel}}</span></div>
+              <p class="muted mono">{{channelId}}</p>
+              <dl class="detail-list">
+                <div><dt>Provider broadcasts</dt><dd>{{streamCount}}</dd></div>
+                <div><dt>Latest occurrence</dt><dd>{{latestBroadcastLabel}}</dd></div>
+              </dl>
+            </article>
+          {{/each}}
+        </div>
+      {{else}}
+        {{> empty-state title="No provider sources configured" body="Add a Twitch or YouTube provider channel before attaching provider broadcast occurrences."}}
+      {{/if}}
+    </section>
+
+    <section class="management-section" id="broadcasts" aria-labelledby="broadcasts-heading">
+      <div class="section-heading">
+        <div><p class="eyebrow">Provider occurrences</p><h2 id="broadcasts-heading">Provider broadcasts</h2></div>
+        {{#if permissions.manageStreams}}<span class="capability capability--manage">Can manage</span>{{else}}<span class="capability">Read only</span>{{/if}}
+      </div>
+
+      {{#if permissions.manageStreams}}
+        {{#if canAttachBroadcast}}
+          <article class="panel">
+            <h3>Attach a provider broadcast</h3>
+            <p class="muted">Create the provider occurrence by selecting its Source and StreamSession. The StreamSession association is fixed after creation.</p>
+            <form method="post" action="/dashboard/stream-management/streams">
+              <input type="hidden" name="streamerId" value="{{currentStreamer.id}}">
+              <label for="broadcast-source">Source
+                <select id="broadcast-source" name="sourceId" required>
+                  {{#each sourceOptions}}<option value="{{id}}">{{optionLabel}}</option>{{/each}}
+                </select>
+              </label>
+              <label for="broadcast-session">StreamSession
+                <select id="broadcast-session" name="streamSessionId" required>
+                  {{#each sessionOptions}}<option value="{{id}}">{{optionLabel}}</option>{{/each}}
+                </select>
+              </label>
+              <label for="broadcast-title">Broadcast title (optional)
+                <input id="broadcast-title" name="title" maxlength="255" placeholder="Provider-side title">
+              </label>
+              <label for="broadcast-external-id">Provider broadcast ID (optional)
+                <input id="broadcast-external-id" name="externalId" maxlength="255" placeholder="video-id-or-broadcast-id">
+              </label>
+              <label for="broadcast-status">State
+                <select id="broadcast-status" name="status">
+                  <option value="scheduled">Scheduled</option>
+                  <option value="live">Live</option>
+                  <option value="offline">Offline</option>
+                </select>
+              </label>
+              <button type="submit">Attach broadcast</button>
+            </form>
+          </article>
+        {{else}}
+          {{> empty-state title="Create the prerequisites first" body="An enabled Source and a non-ended StreamSession are required before a provider broadcast can be attached."}}
+        {{/if}}
+      {{/if}}
+
+      {{#if streams.length}}
+        <article class="panel">
+          <ul class="item-list">
+            {{#each streams}}
+              <li>
+                <div>
+                  <strong>{{title}}</strong>
+                  <span class="muted">{{sourceProviderName}} · {{sourceChannelId}}</span>
+                  <span class="muted">StreamSession: {{streamSessionTitle}} (#{{streamSessionId}}) · {{externalIdLabel}}</span>
+                  <span class="muted">{{timingLabel}}</span>
+                </div>
+                <span class="status-pill status-pill--{{statusTone}}">{{statusLabel}}</span>
+              </li>
+            {{/each}}
+          </ul>
+        </article>
+      {{else}}
+        {{> empty-state title="No provider broadcasts attached" body="Provider occurrences will appear here once they are created against a Source and StreamSession."}}
+      {{/if}}
+    </section>
+  </div>
+</div>
+{{else}}
+<section class="empty-workspace" aria-labelledby="empty-stream-management-title">
+  <p class="eyebrow">Provider-neutral stream management</p>
+  <h1 id="empty-stream-management-title">No creator workspace yet</h1>
+  <p>Your account is signed in, but it is not a member of any Streamzone creator workspace.</p>
+  <a class="button button--secondary" href="/dashboard">Return to dashboard</a>
+</section>
+{{/if}}
