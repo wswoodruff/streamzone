@@ -73,3 +73,31 @@ Test('policy, execution, and accounting stages produce terminal outcome variants
     await stages.accounting({ account: async () => ({ insufficient: true, required: 10, available: 2 }) })(context);
     Assert.equal(context.outcome.type, 'insufficient_points');
 });
+
+Test('insufficient accounting sends a generic response and accepts a custom message', async () => {
+    const delivered = [];
+    const generic = new InteractionContext(message(), {
+        outcome: InteractionOutcome.fulfilled(),
+        response: new ChatResponse({ text: 'Success should be replaced.', sourceId: 'channel-1' })
+    });
+    await stages.accounting({ account: async () => ({ insufficient: true, required: 10, available: 2 }) })(generic);
+    Assert.equal(generic.response.text, stages.DEFAULT_INSUFFICIENT_RESOURCE_MESSAGE);
+    Assert.equal(generic.response.sourceId, 'channel-1');
+    Assert.equal(generic.response.replyToMessageId, 'event-1');
+    await stages.responseDelivery({ deliver: async (response) => delivered.push(response.text) })(generic);
+
+    const custom = new InteractionContext(message(), { outcome: InteractionOutcome.fulfilled() });
+    await stages.accounting({ account: async () => ({
+        insufficient: true,
+        required: 10,
+        available: 2,
+        insufficientMessage: 'Earn more sparks before using this action.'
+    }) })(custom);
+    Assert.equal(custom.response.text, 'Earn more sparks before using this action.');
+    await stages.responseDelivery({ deliver: async (response) => delivered.push(response.text) })(custom);
+
+    Assert.deepEqual(delivered, [
+        stages.DEFAULT_INSUFFICIENT_RESOURCE_MESSAGE,
+        'Earn more sparks before using this action.'
+    ]);
+});
