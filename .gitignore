@@ -4,4 +4,7 @@ node_modules/
 *.sqlite-shm
 *.sqlite-wal
 coverage/
+artifacts/
+playwright-report/
+test-results/
 
