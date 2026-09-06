@@ -100,8 +100,18 @@ installing Twitch or YouTube SDKs. Command matching must inspect `ChatMessage.te
 enrich `InteractionContext`; it must never receive a provider event object.
 
 Keep configuration (commands, permissions, templates), runtime state (cooldowns,
-deduplication), and audit history separate. Start with deterministic text templates;
-add AI-backed executors only after authorization, limits, and observability are in place.
+deduplication), and audit history separate. The current `Command` schema is deliberately
+limited to deterministic text responses: it contains a name, response template, enabled
+state, and cooldown settings. AI configuration, safety policy, accounting, and
+conversation state must live outside `Command.responseTemplate` and the ordinary command
+record.
+
+Treat AI as a streamer-configured channel capability, not as a reward, a reward executor,
+or a special kind of deterministic text command. A command such as `!ai` may be one
+invocation surface that routes an interaction to the capability, but the command does not
+own the AI feature or its state. Internally, preserve a provider-neutral executor boundary
+so model providers remain replaceable; that executor is an implementation detail, not the
+product model presented to streamers.
 
 ## Decisions
 
@@ -145,6 +155,10 @@ add AI-backed executors only after authorization, limits, and observability are 
 - A StreamSession, rather than a provider connection or provider broadcast identifier,
   is the accounting scope for participants, cooldown state, command/AI budgets, and
   execution audit outcomes.
+- AI is configured per streamer as a channel capability. It is not modeled as a reward or
+  reward executor, and its configuration, safety policy, accounting, and conversation
+  state remain separate from deterministic `Command` records. Provider-neutral AI
+  executors are an internal replaceability boundary only.
 
 ## Ready queue
 
@@ -185,8 +199,11 @@ Completed prerequisites remain here to make the required execution order explici
 - [ ] **Add execution audit and operational telemetry.** Persist bounded execution
   metadata without secrets or unnecessary chat content; add structured logs and metrics
   for latency, errors, rate limits, and command usage.
-- [ ] **Add pluggable AI commands.** Introduce an executor interface, per-streamer model
-  configuration, safety controls, budgets, timeouts, fallbacks, and prompt-injection tests.
+- [ ] **Add the streamer-configured AI channel feature.** Add per-streamer AI
+  configuration, safety controls, budgets, conversation state, timeouts, fallbacks, and
+  prompt-injection tests. Support invocation surfaces such as `!ai` without storing AI
+  policy or state in `Command.responseTemplate`; keep the provider-neutral executor
+  interface as an internal implementation boundary.
 
 ## Completed foundations
 
