@@ -75,7 +75,9 @@
 @media (max-width: 42rem) {
     .management-form-grid { grid-template-columns: 1fr; }
     .management-form--inline { grid-template-columns: 1fr; width: 100%; }
-    .management-actions { width: 100%; justify-content: stretch; }
+    .management-list__item { flex-direction: column; }
+    .management-list__identity, .management-actions { width: 100%; }
+    .management-actions { justify-content: stretch; }
     .management-actions form, .management-actions button { width: 100%; }
     .role-guide > div { grid-template-columns: 1fr; gap: 0.15rem; }
 }
