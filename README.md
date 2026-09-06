@@ -42,13 +42,22 @@ The account, audience, and runtime identities have deliberately separate meaning
   `Streamer`. It may encompass one or more provider `Stream` broadcasts and gives
   cooldowns, budgets, usage, participants, and audit records a stable session scope
   even when a provider reconnects or a broadcast identifier changes.
-- **Participant** is the unique association of a `ChatUser` with a `StreamSession`. It
-  stores session-local participation state and aggregates (such as first/last activity
-  and usage counters) without duplicating provider identity or channel relationship
-  data.
+- **StreamerParticipant** is the durable, per-streamer association of a `ChatUser`,
+  with first/last-seen timestamps, aggregate activity counters, and privacy and
+  moderation leaderboard exclusions.
+- **StreamSessionParticipant** is the session-local association of a `ChatUser`, with
+  join/last-activity timestamps and counters that reset for each `StreamSession`.
+
+Provider adapters must resolve their author to a `ChatIdentity`, translate the payload
+to the small normalized event accepted by `ParticipantActivityService.ingest()`, and
+provide a stable, provider-namespaced idempotency key. They must not update participant
+counters themselves. Ingestion records that key and updates both participant scopes in
+one database transaction, so redelivery cannot count an activity twice. Leaderboards
+use a metric-descending, `chatUserId`-ascending order and keyset cursors; privacy- or
+moderation-excluded participants are omitted.
 
 Only `User` plus `StreamerMembership` authorizes creator-dashboard access. A linked
-`ChatUser`, a `ChatIdentity`, a `Participant`, or any provider subscription,
+`ChatUser`, a `ChatIdentity`, either participant record, or any provider subscription,
 membership, moderator, broadcaster, follower, or other `ChannelRelationship` status
 **must never grant dashboard authorization**.
 
