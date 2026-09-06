@@ -17,6 +17,10 @@
     outline-offset: 3px;
 }
 
+.skip-link:not(:focus-visible) {
+    visibility: hidden;
+}
+
 .command-create-panel {
     margin-bottom: 1rem;
 }
@@ -211,6 +215,12 @@
 }
 
 @media (max-width: 44rem) {
+    .management-section {
+        margin-top: 0.8rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--border);
+    }
+
     .command-form__grid {
         grid-template-columns: 1fr;
     }
