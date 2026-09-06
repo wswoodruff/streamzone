@@ -44,7 +44,45 @@ AI, and response-delivery concerns must remain replaceable.
 - Membership roles and centralized capabilities protect management reads and writes;
   invitations provide the membership onboarding path and streamer creation establishes
   its creator as an owner atomically.
+- Audience identity and Streamzone-owned stream sessions are defined below but are not
+  implemented yet. Provider adapters and execution/accounting must wait for those
+  stable scopes.
 - The UI does not yet expose streamer, source, stream, or command configuration forms.
+
+## Account, audience, and session definitions
+
+These concepts must remain separate in schema, services, and authorization checks:
+
+- **User** — a registered Streamzone web account that authenticates to the site. The
+  existing `lib/models/user.js` remains the registered web-account model. A `User` is
+  not automatically a chat audience identity.
+- **StreamerMembership** — the creator-team RBAC association from a `User` to a
+  `Streamer`, carrying an `owner`, `admin`, `editor`, or `viewer` role. The existing
+  `lib/models/streamer-membership.js` remains creator-team RBAC and the sole source of
+  tenant dashboard capabilities.
+- **ChatUser** — the provider-neutral audience entity used for participation and usage
+  accounting. It may own several `ChatIdentity` records and need not be linked to a
+  registered `User`; any optional account link must confer no authorization by itself.
+- **ChatIdentity** — a provider-scoped account owned by one `ChatUser`, uniquely keyed
+  by `(provider, providerUserId)`. Provider display name, handle, and avatar are mutable
+  attributes and must not be used as durable keys.
+- **ChannelRelationship** — the latest provider-reported relationship between a
+  `ChatIdentity` and a `Source`, including applicable broadcaster, moderator,
+  subscriber/member, follower, and blocked state plus observed/provider timestamps.
+  It supplies chat-policy context only and is not an RBAC membership.
+- **StreamSession** — a Streamzone-owned interaction/accounting window belonging to one
+  `Streamer`. It can associate one or more provider `Stream` records and scopes runtime
+  cooldowns, budgets, usage, participants, and audit outcomes independently of provider
+  reconnects or changing broadcast identifiers.
+- **Participant** — the unique `(streamSessionId, chatUserId)` association. It holds
+  session-local first/last activity and aggregate usage/state; provider account facts
+  remain on `ChatIdentity` and channel status remains on `ChannelRelationship`.
+
+Dashboard authorization is derived only from an authenticated `User` and that user's
+`StreamerMembership`. Provider subscription or channel-member status must never grant
+dashboard authorization. Neither linking a `ChatUser` to a `User` nor broadcaster,
+moderator, subscriber/member, follower, participant, or other provider status may
+create or imply a `StreamerMembership`.
 
 ## Architecture direction
 
@@ -86,6 +124,13 @@ add AI-backed executors only after authorization, limits, and observability are 
   routes. Public reads may include hosted streamers and live streams without membership
   data; management and dashboard reads require authentication and are scoped to the
   caller's memberships.
+- Keep web accounts, creator-team authorization, audience identity, provider channel
+  status, and per-session participation as separate concerns. In particular,
+  `lib/models/user.js` remains the web-account model and
+  `lib/models/streamer-membership.js` remains creator-team RBAC.
+- A StreamSession, rather than a provider connection or provider broadcast identifier,
+  is the accounting scope for participants, cooldown state, command/AI budgets, and
+  execution audit outcomes.
 
 ## Ready queue
 
@@ -108,6 +153,14 @@ Completed prerequisites remain here to make the required execution order explici
   authority ordering and final-owner protection. (2026-09-06)
 - [ ] **Add command management to the dashboard.** Provide accessible forms for create,
   edit, enable/disable, cooldown, and delete; include validation and empty/error states.
+- [ ] **Establish provider-neutral audience identity.** Add `ChatUser`, `ChatIdentity`,
+  and `ChannelRelationship` models/migrations and services with stable provider IDs,
+  uniqueness and merge/link rules, mutable profile snapshots, and tests proving that
+  audience or provider channel status cannot authorize dashboard access.
+- [ ] **Establish StreamSession and Participant accounting scopes.** Add the
+  Streamzone-owned session lifecycle, associate provider `Stream` records without using
+  them as the runtime boundary, create unique session participants by `ChatUser`, and
+  test reconnect, multi-provider, lifecycle, and tenant-isolation behavior.
 - [ ] **Normalize chat contracts and implement runtime execution.** Add provider-neutral
   message/response objects, configurable deterministic matching, argument extraction,
   cooldown policy, safe allowlisted template rendering, output limits, and structured
