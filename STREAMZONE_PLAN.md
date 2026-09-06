@@ -11,10 +11,10 @@ Build a dependable multi-tenant service where each streamer can configure rich c
 - Hapi serves public stream data and an authenticated, tenant-scoped creator dashboard using hapipal, Vision, and Handlebars.
 - SQLite/Objection persistence is defined by one canonical greenfield migration. It directly creates the current auth, streaming, audience, StreamSession, participant, point/reward, instruction, and standalone AI schema without historical conversion or backfill steps.
 - Every provider `Stream` belongs to exactly one same-tenant `StreamSession` from creation. Authenticated session list/create/update endpoints make that invariant operable for management clients and simulcasts.
-- Command configuration has authenticated CRUD endpoints. Command chat authorization has one runtime/domain role set: `everyone`, `moderator`, `supermod`, and `owner`; application code does not import domain constants from migrations.
+- Command configuration has authenticated CRUD endpoints and a complete server-rendered dashboard management surface for create/edit/enable-disable/delete, validation, disabled-command visibility, cooldowns, and required chat roles.
+- Command chat authorization has one runtime/domain role set: `everyone`, `moderator`, `supermod`, and `owner`; application code does not import domain constants from migrations.
 - Provider-neutral audience identity, channel relationships, participant scopes, point accounting, deterministic/manual rewards, and standalone streamer AI configuration/invocation records are implemented.
 - AI is a standalone channel capability keyed by streamer. `AiInvocation` is the AI execution/accounting record; reward-scoped AI does not exist in the current architecture.
-- The dashboard does not yet expose command management forms; that is the next frontend/testability milestone.
 
 ## Core decisions
 
@@ -43,7 +43,7 @@ Work in this order unless a documented prerequisite or explicit user instruction
 - [x] Membership schema, role capabilities, creator ownership, invitations, and tenant isolation. (2026-09-06)
 - [x] Provider-neutral audience identity and participant accounting scopes. (2026-09-06)
 - [x] **Greenfield schema + legacy purge.** Collapse historical migrations into one canonical schema; remove reward-scoped AI; require explicit StreamSession ownership; remove runtime imports from migrations; rebuild fresh-schema tests. (2026-09-06)
-- [ ] **Add command management to the dashboard.** Provide accessible create/edit/enable-disable/delete forms with cooldown and required chat-role controls, validation/empty/error states, and route-level integration testability.
+- [x] **Add command management to the dashboard.** Provide accessible create/edit/enable-disable/delete forms with cooldown and required chat-role controls, validation/empty/error states, and route-level integration testability. (2026-09-06)
 - [ ] **Connect deterministic command execution to the normalized runtime.** Implement configurable matching/arguments, safe allowlisted template rendering, output limits, and concrete service integrations.
 - [ ] **Build the first provider adapter.** Choose Twitch or YouTube based on product priority; isolate credentials, reconnect/backoff, event deduplication, and send limits.
 - [ ] **Add execution audit and operational telemetry.** Persist bounded execution metadata and add structured logs/metrics without secrets or unnecessary chat content.
@@ -63,4 +63,5 @@ Also boot `npm start` against a fresh SQLite database. Never log session tokens,
 
 ## Progress log
 
-- **2026-09-06 — Greenfield schema and legacy purge:** replaced the historical migration chain with one canonical initial schema; removed reward-scoped AI schema/execution paths; made provider streams require an explicit same-tenant StreamSession; added minimal session management endpoints; centralized command chat roles in runtime domain code; rebuilt fresh-schema/session/reward coverage; and removed legacy migration/session assumptions from the local test console and documentation. Next milestone: dashboard command management and its testability surface.
+- **2026-09-06 — Greenfield schema and legacy purge:** replaced the historical migration chain with one canonical initial schema; removed reward-scoped AI schema/execution paths; made provider streams require an explicit same-tenant StreamSession; added minimal session management endpoints; centralized command chat roles in runtime domain code; rebuilt fresh-schema/session/reward coverage; and removed legacy migration/session assumptions from the local test console and documentation.
+- **2026-09-06 — Dashboard command management:** added the complete server-rendered command management surface with POST-redirect-GET mutations, canonical shared chat-role options, viewer read-only UX plus backend authorization, validation/error states, disabled-command visibility, route/integration coverage, and Playwright CRUD/capture coverage. Next milestone: deterministic command execution on the normalized runtime.

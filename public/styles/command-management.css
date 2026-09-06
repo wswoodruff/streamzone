@@ -1,0 +1,230 @@
+#commands textarea {
+    width: 100%;
+    margin-top: 0.4rem;
+    padding: 0.72rem 0.8rem;
+    resize: vertical;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface-soft);
+    color: var(--text);
+    font: inherit;
+    line-height: 1.45;
+}
+
+#commands textarea:focus-visible,
+#commands summary:focus-visible {
+    outline: 3px solid var(--accent-strong);
+    outline-offset: 3px;
+}
+
+.command-create-panel {
+    margin-bottom: 1rem;
+}
+
+.command-create-panel > .panel-title-row {
+    align-items: flex-start;
+}
+
+.command-create-panel > .panel-title-row .muted {
+    font-size: 0.8rem;
+}
+
+.command-form {
+    margin-top: 1rem;
+}
+
+.command-form__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 1rem;
+}
+
+.command-form label {
+    position: relative;
+    margin: 0.8rem 0 0;
+}
+
+.command-form .field-prefix {
+    position: absolute;
+    top: 2.55rem;
+    left: 0.8rem;
+    z-index: 1;
+    color: var(--muted);
+    font-weight: 900;
+}
+
+.command-form .field-prefix + input {
+    padding-left: 1.55rem;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1rem;
+}
+
+.form-error {
+    margin: 1rem 0 0;
+}
+
+.field-error {
+    display: block;
+    margin-top: 0.35rem;
+    color: #ffd7dd;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.notice {
+    margin-bottom: 1rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+
+.notice--success {
+    border-color: rgba(95, 224, 176, 0.35);
+    background: var(--positive-soft);
+    color: #b8f5dd;
+}
+
+.read-only-note {
+    margin-bottom: 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-soft);
+    color: var(--muted-strong);
+    font-size: 0.88rem;
+}
+
+.command-summary {
+    margin: 1rem 0 0.65rem;
+}
+
+.command-list {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.command-card {
+    overflow: visible;
+}
+
+.command-card--disabled {
+    opacity: 0.82;
+}
+
+.command-card__heading {
+    align-items: flex-start;
+}
+
+.command-card__heading > div {
+    min-width: 0;
+}
+
+.command-card__heading h3 {
+    margin-bottom: 0.25rem;
+}
+
+.command-card__heading .muted {
+    font-size: 0.8rem;
+}
+
+.command-response {
+    margin: 1rem 0 0;
+    padding: 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-soft);
+    color: var(--muted-strong);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.command-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.55rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.command-editor,
+.delete-confirm {
+    min-width: 7rem;
+}
+
+.command-editor[open] {
+    width: 100%;
+}
+
+.command-editor summary,
+.delete-confirm summary {
+    width: fit-content;
+    min-height: 2.65rem;
+    padding: 0.62rem 0.95rem;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface-raised);
+    color: var(--text);
+    cursor: pointer;
+    font-weight: 800;
+    list-style-position: inside;
+}
+
+.command-editor[open] summary,
+.delete-confirm[open] summary {
+    margin-bottom: 0.8rem;
+}
+
+.command-form--edit {
+    margin-top: 0;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-soft);
+}
+
+.delete-confirm__body {
+    max-width: 26rem;
+    padding: 1rem;
+    border: 1px solid rgba(255, 135, 150, 0.3);
+    border-radius: var(--radius-sm);
+    background: var(--danger-soft);
+}
+
+.delete-confirm__body p {
+    margin-bottom: 0.8rem;
+    color: #ffd7dd;
+}
+
+.button--danger {
+    border-color: rgba(255, 135, 150, 0.42);
+    background: #8d2f3b;
+}
+
+.button--danger:hover {
+    background: #ad3948;
+}
+
+@media (max-width: 44rem) {
+    .command-form__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .command-actions {
+        flex-direction: column;
+    }
+
+    .command-actions > *,
+    .command-actions .button,
+    .command-editor,
+    .delete-confirm,
+    .command-editor summary,
+    .delete-confirm summary {
+        width: 100%;
+    }
+}
