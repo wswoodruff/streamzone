@@ -100,19 +100,128 @@
     </section>
 
     <section class="management-section" id="commands" aria-labelledby="commands-heading">
-      <div class="section-heading"><div><p class="eyebrow">Interaction</p><h2 id="commands-heading">Commands</h2></div>{{#if permissions.manageCommands}}<span class="capability capability--manage">Can manage</span>{{else}}<span class="capability">Read only</span>{{/if}}</div>
-      {{#if commands.total}}
-        <article class="panel">
-          <div class="summary-row"><span><strong>{{commands.enabled}}</strong> enabled</span><span><strong>{{commands.disabled}}</strong> disabled</span></div>
-          <ul class="item-list">
-            {{#each commands.items}}
-              <li><div><strong class="mono">!{{name}}</strong><span class="muted">{{roleLabel}} · {{cooldownLabel}}</span></div><span class="status-pill {{#if enabled}}status-pill--live{{else}}status-pill--neutral{{/if}}">{{statusLabel}}</span></li>
-            {{/each}}
-          </ul>
-          {{#if commands.hiddenCount}}<p class="panel-footnote">+ {{commands.hiddenCount}} more configured commands</p>{{/if}}
+      <div class="section-heading">
+        <div><p class="eyebrow">Interaction</p><h2 id="commands-heading">Commands</h2></div>
+        {{#if permissions.manageCommands}}<span class="capability capability--manage">Can manage</span>{{else}}<span class="capability">Read only</span>{{/if}}
+      </div>
+
+      {{#if commandManagement.notice}}
+        <div class="notice notice--success" role="status">{{commandManagement.notice}}</div>
+      {{/if}}
+
+      {{#if permissions.manageCommands}}
+        <article class="panel command-create-panel">
+          <div class="panel-title-row">
+            <div><p class="eyebrow">New interaction</p><h3>Create command</h3></div>
+            <span class="muted">Commands are enabled by default</span>
+          </div>
+          {{#if commandManagement.createForm.error}}
+            <div class="error form-error" role="alert">{{commandManagement.createForm.error}}</div>
+          {{/if}}
+          <form class="command-form" method="post" action="{{commandManagement.createAction}}" aria-label="Create command">
+            <div class="command-form__grid">
+              <label>Command name
+                <span class="field-prefix">!</span>
+                <input name="name" value="{{commandManagement.createForm.name}}" autocomplete="off" maxlength="50" required {{#if commandManagement.createForm.fieldErrors.name}}aria-invalid="true"{{/if}}>
+                {{#if commandManagement.createForm.fieldErrors.name}}<span class="field-error">{{commandManagement.createForm.fieldErrors.name}}</span>{{/if}}
+              </label>
+              <label>Cooldown seconds
+                <input name="cooldownSeconds" type="number" min="0" max="86400" step="1" value="{{commandManagement.createForm.cooldownSeconds}}" required {{#if commandManagement.createForm.fieldErrors.cooldownSeconds}}aria-invalid="true"{{/if}}>
+                {{#if commandManagement.createForm.fieldErrors.cooldownSeconds}}<span class="field-error">{{commandManagement.createForm.fieldErrors.cooldownSeconds}}</span>{{/if}}
+              </label>
+              <label>Cooldown scope
+                <select name="cooldownScope" {{#if commandManagement.createForm.fieldErrors.cooldownScope}}aria-invalid="true"{{/if}}>
+                  {{#each commandManagement.createForm.cooldownScopes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+                </select>
+                {{#if commandManagement.createForm.fieldErrors.cooldownScope}}<span class="field-error">{{commandManagement.createForm.fieldErrors.cooldownScope}}</span>{{/if}}
+              </label>
+              <label>Required chat role
+                <select name="requiredChatRole" {{#if commandManagement.createForm.fieldErrors.requiredChatRole}}aria-invalid="true"{{/if}}>
+                  {{#each commandManagement.createForm.chatRoles}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+                </select>
+                {{#if commandManagement.createForm.fieldErrors.requiredChatRole}}<span class="field-error">{{commandManagement.createForm.fieldErrors.requiredChatRole}}</span>{{/if}}
+              </label>
+            </div>
+            <label>Response template
+              <textarea name="responseTemplate" rows="3" maxlength="1000" required {{#if commandManagement.createForm.fieldErrors.responseTemplate}}aria-invalid="true"{{/if}}>{{commandManagement.createForm.responseTemplate}}</textarea>
+              {{#if commandManagement.createForm.fieldErrors.responseTemplate}}<span class="field-error">{{commandManagement.createForm.fieldErrors.responseTemplate}}</span>{{/if}}
+            </label>
+            <div class="form-actions"><button type="submit">Create command</button></div>
+          </form>
         </article>
       {{else}}
-        {{> empty-state title="No commands configured" body="This creator has no deterministic chat commands yet. Command forms can plug into this section in the next management increment."}}
+        <div class="read-only-note">Viewer access can inspect every configured command, including disabled commands, but command changes require editor, admin, or owner access.</div>
+      {{/if}}
+
+      {{#if commandManagement.total}}
+        <div class="command-summary summary-row"><span><strong>{{commandManagement.enabled}}</strong> enabled</span><span><strong>{{commandManagement.disabled}}</strong> disabled</span></div>
+        <div class="command-list">
+          {{#each commandManagement.items}}
+            <article class="panel command-card {{#unless enabled}}command-card--disabled{{/unless}}" data-command-name="{{name}}">
+              <div class="panel-title-row command-card__heading">
+                <div>
+                  <h3 class="mono">!{{name}}</h3>
+                  <span class="muted">{{roleLabel}} · {{cooldownLabel}}</span>
+                </div>
+                <span class="status-pill {{#if enabled}}status-pill--live{{else}}status-pill--neutral{{/if}}">{{statusLabel}}</span>
+              </div>
+              <p class="command-response">{{responseTemplate}}</p>
+
+              {{#if @root.permissions.manageCommands}}
+                <div class="command-actions">
+                  <form class="inline-form" method="post" action="{{toggleAction}}">
+                    <input type="hidden" name="enabled" value="{{toggleValue}}">
+                    <button class="button button--secondary" type="submit">{{toggleLabel}}</button>
+                  </form>
+                  <details class="command-editor" {{#if editOpen}}open{{/if}}>
+                    <summary>Edit</summary>
+                    {{#if editForm.error}}<div class="error form-error" role="alert">{{editForm.error}}</div>{{/if}}
+                    <form class="command-form command-form--edit" method="post" action="{{updateAction}}" aria-label="Edit !{{name}} command">
+                      <div class="command-form__grid">
+                        <label>Command name
+                          <input name="name" value="{{editForm.name}}" maxlength="50" required {{#if editForm.fieldErrors.name}}aria-invalid="true"{{/if}}>
+                          {{#if editForm.fieldErrors.name}}<span class="field-error">{{editForm.fieldErrors.name}}</span>{{/if}}
+                        </label>
+                        <label>Cooldown seconds
+                          <input name="cooldownSeconds" type="number" min="0" max="86400" step="1" value="{{editForm.cooldownSeconds}}" required {{#if editForm.fieldErrors.cooldownSeconds}}aria-invalid="true"{{/if}}>
+                          {{#if editForm.fieldErrors.cooldownSeconds}}<span class="field-error">{{editForm.fieldErrors.cooldownSeconds}}</span>{{/if}}
+                        </label>
+                        <label>Cooldown scope
+                          <select name="cooldownScope" {{#if editForm.fieldErrors.cooldownScope}}aria-invalid="true"{{/if}}>
+                            {{#each editForm.cooldownScopes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+                          </select>
+                          {{#if editForm.fieldErrors.cooldownScope}}<span class="field-error">{{editForm.fieldErrors.cooldownScope}}</span>{{/if}}
+                        </label>
+                        <label>Required chat role
+                          <select name="requiredChatRole" {{#if editForm.fieldErrors.requiredChatRole}}aria-invalid="true"{{/if}}>
+                            {{#each editForm.chatRoles}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+                          </select>
+                          {{#if editForm.fieldErrors.requiredChatRole}}<span class="field-error">{{editForm.fieldErrors.requiredChatRole}}</span>{{/if}}
+                        </label>
+                      </div>
+                      <label>Response template
+                        <textarea name="responseTemplate" rows="3" maxlength="1000" required {{#if editForm.fieldErrors.responseTemplate}}aria-invalid="true"{{/if}}>{{editForm.responseTemplate}}</textarea>
+                        {{#if editForm.fieldErrors.responseTemplate}}<span class="field-error">{{editForm.fieldErrors.responseTemplate}}</span>{{/if}}
+                      </label>
+                      <div class="form-actions"><button type="submit">Save changes</button></div>
+                    </form>
+                  </details>
+                  <details class="delete-confirm">
+                    <summary>Delete</summary>
+                    <div class="delete-confirm__body">
+                      <p>Delete <strong class="mono">!{{name}}</strong>? This removes the command immediately.</p>
+                      <form method="post" action="{{deleteAction}}">
+                        <button class="button button--danger" type="submit">Delete command</button>
+                      </form>
+                    </div>
+                  </details>
+                </div>
+              {{/if}}
+            </article>
+          {{/each}}
+        </div>
+      {{else}}
+        {{> empty-state title="No commands configured" body="Create the first deterministic chat command for this creator. Commands can be edited, disabled, or removed here later."}}
       {{/if}}
     </section>
 
