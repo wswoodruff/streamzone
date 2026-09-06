@@ -32,17 +32,17 @@ Test('stream management explains and renders Source, provider broadcast, and Str
     Assert.equal(response.statusCode, 200);
     for (const expected of [
         'Streams &amp; sources',
-        'Two related records, two jobs',
-        'Streamzone runtime window',
-        'Provider broadcast',
+        'How live broadcasts are organized',
+        'One show across platforms',
+        'Platform broadcast',
         'Launch Session',
         'Provider Launch',
         'YouTube',
         'primary-youtube',
-        'StreamSession: Launch Session',
-        'Create a StreamSession',
+        'Session: Launch Session',
+        'Create a session',
         'Add a source',
-        'Attach a provider broadcast'
+        'Attach a platform broadcast'
     ]) Assert.match(response.result, new RegExp(expected));
 });
 
@@ -59,7 +59,7 @@ Test('stream management form routes mutate through existing streaming service bo
     Assert.equal(sourceResponse.statusCode, 303);
     const source = await context.models.Source.query().findOne({ streamerId: streamer.id, channelId: 'managed-channel' });
     Assert.ok(source);
-    Assert.equal(source.enabled, true);
+    Assert.equal(Boolean(source.enabled), true);
 
     const sessionResponse = await injectAuthenticated(context, owner, {
         method: 'POST',
@@ -149,9 +149,9 @@ Test('stream management renders strong empty states without inventing ungrouped 
     });
 
     Assert.equal(response.statusCode, 200);
-    Assert.match(response.result, /No StreamSessions yet/);
-    Assert.match(response.result, /No provider sources configured/);
-    Assert.match(response.result, /No provider broadcasts attached/);
+    Assert.match(response.result, /No sessions yet/);
+    Assert.match(response.result, /No streaming sources configured/);
+    Assert.match(response.result, /No platform broadcasts attached/);
     Assert.match(response.result, /Create the prerequisites first/);
 });
 
@@ -169,7 +169,7 @@ Test('editor can manage sources and stream lifecycle controls', async (t) => {
     Assert.equal(page.statusCode, 200);
     Assert.match(page.result, /Editor access/);
     Assert.match(page.result, /Add a source/);
-    Assert.match(page.result, /Create a StreamSession/);
+    Assert.match(page.result, /Create a session/);
 
     const mutation = await injectAuthenticated(context, editor, {
         method: 'POST',
