@@ -52,6 +52,7 @@ Test('stages compose using injected functions without provider SDKs', async () =
         streamSessionResolution: stages.streamSessionResolution({ resolve: async () => ({ streamerId: 4, streamSessionId: 5, participantId: 6 }) }),
         moderation: stages.moderation({ authorize: async () => true }),
         commandMatching: stages.commandMatching({ match: async () => ({ command: { id: 3, cooldownSeconds: 2, cooldownScope: 'participant' }, arguments: ['world'] }) }),
+        commandAuthorization: stages.commandAuthorization(),
         cooldowns: stages.cooldowns({ runtimeState, now: () => 100 }),
         execution: stages.execution({ execute: async (context) => ({ response: new ChatResponse({ text: `Hello ${context.arguments[0]}`, sourceId: context.message.sourceId }) }) }),
         accounting: stages.accounting({ account: async () => ({}) }),
@@ -62,6 +63,26 @@ Test('stages compose using injected functions without provider SDKs', async () =
     Assert.equal(result.outcome.type, 'fulfilled');
     Assert.deepEqual(calls, ['audit:fulfilled', 'send:Hello world']);
     Assert.equal((await pipeline.process(message())).outcome.type, 'ignored');
+});
+
+Test('command authorization enforces moderator and supermod command roles', async () => {
+    const authorize = stages.commandAuthorization();
+    const regularModerator = new InteractionContext(message(), {
+        outcome: InteractionOutcome.accepted(),
+        command: { id: 1, requiredChatRole: 'supermod' },
+        relationship: [{ relationship: 'moderator' }]
+    });
+    await authorize(regularModerator);
+    Assert.equal(regularModerator.outcome.type, 'unauthorized');
+    Assert.deepEqual(regularModerator.outcome.details, { commandId: 1, requiredChatRole: 'supermod' });
+
+    const supermod = new InteractionContext(message(), {
+        outcome: InteractionOutcome.accepted(),
+        command: { id: 2, requiredChatRole: 'moderator' },
+        relationship: [{ relationship: 'moderator', tier: 'supermod' }]
+    });
+    await authorize(supermod);
+    Assert.equal(supermod.outcome.type, 'accepted');
 });
 
 Test('policy, execution, and accounting stages produce terminal outcome variants', async () => {
