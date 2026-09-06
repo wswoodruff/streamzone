@@ -33,7 +33,16 @@ const expectedRoutes = [
     ['GET', '/streams'],
     ['POST', '/streams'],
     ['PATCH', '/streams/{streamId}'],
-    ['DELETE', '/streams/{streamId}']
+    ['DELETE', '/streams/{streamId}'],
+    ['GET', '/streamers/{streamerId}/rewards'],
+    ['POST', '/streamers/{streamerId}/rewards'],
+    ['PATCH', '/streamers/{streamerId}/rewards/{rewardId}'],
+    ['POST', '/streamers/{streamerId}/redemptions/{redemptionId}/fulfill'],
+    ['GET', '/participants/streamers/{streamerId}/balance'],
+    ['GET', '/participants/streamers/{streamerId}/rewards'],
+    ['GET', '/participants/streamers/{streamerId}/redemptions'],
+    ['POST', '/participants/streamers/{streamerId}/redemptions'],
+    ['GET', '/participants/streamers/{streamerId}/redemptions/{redemptionId}']
 ];
 
 const joiSchema = new Proxy(() => joiSchema, {
