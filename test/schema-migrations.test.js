@@ -23,12 +23,13 @@ else {
         require('../migrations/003-create-command-tables'),
         require('../migrations/004-create-streamer-memberships'),
         require('../migrations/005-create-streamer-invitations'),
-        require('../migrations/006-create-chat-identities')
+        require('../migrations/006-create-chat-identities'),
+        require('../migrations/007-create-channel-relationships')
     ];
     const Streamer = require('../lib/models/streamer');
     const User = require('../lib/models/user');
 
-    const expectedTables = ['ChatIdentity', 'ChatUser', 'Command', 'Session', 'Source', 'Stream', 'Streamer', 'StreamerInvitation', 'StreamerMembership', 'User'];
+    const expectedTables = ['ChannelRelationship', 'ChatIdentity', 'ChatUser', 'Command', 'Session', 'Source', 'Stream', 'Streamer', 'StreamerInvitation', 'StreamerMembership', 'User'];
 
     const makeDatabase = async () => {
         const knex = Knex({
