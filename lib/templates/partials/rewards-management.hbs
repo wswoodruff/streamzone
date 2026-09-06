@@ -5,7 +5,7 @@
   </div>
 
   <div class="architecture-note panel">
-    <strong>Reward boundary</strong>
+    <strong>How rewards work</strong>
     <span>{{rewards.architectureNote}}</span>
   </div>
 
@@ -41,7 +41,7 @@
                       <label>Per-session limit<input type="number" name="perStreamLimit" value="{{perStreamLimit}}" min="1" placeholder="None"></label>
                     </div>
                     <label>Description<textarea name="description" maxlength="2000" rows="3">{{description}}</textarea></label>
-                    <p class="management-note">Fulfillment stays {{fulfillmentLabel}} in this editor. Use the API if an intentional executor-type migration is required.</p>
+                    <p class="management-note">Fulfillment type stays {{fulfillmentLabel}} while editing this reward. Create a new reward if you need a different fulfillment type.</p>
                     <button class="button button--secondary" type="submit">Save reward</button>
                   </form>
                 </details>
@@ -50,7 +50,7 @@
           {{/each}}
         </div>
       {{else}}
-        <p class="muted">No reward definitions are configured.</p>
+        <p class="muted">No rewards are configured yet.</p>
       {{/if}}
 
       {{#if rewards.canManage}}
@@ -63,7 +63,7 @@
               <label>Name<input name="name" maxlength="120" required></label>
               <label>Point cost<input type="number" name="pointCost" min="1" required></label>
               <label>Fulfillment<select name="fulfillmentType">{{#each rewards.fulfillmentTypes}}<option value="{{value}}">{{label}}</option>{{/each}}</select></label>
-              <label>Deterministic action<select name="executorAction">{{#each rewards.executorActions}}<option value="{{value}}">{{label}}</option>{{/each}}</select></label>
+              <label>Automated action<select name="executorAction">{{#each rewards.executorActions}}<option value="{{value}}">{{label}}</option>{{/each}}</select></label>
               <label>Status<select name="enabled"><option value="true">Enabled</option><option value="false">Disabled</option></select></label>
               <label>Eligibility<select name="eligibilityMembership">{{#each rewards.eligibilityOptions}}<option value="{{value}}">{{label}}</option>{{/each}}</select></label>
               <label>Per-user cooldown (seconds)<input type="number" name="perUserCooldownSeconds" min="0" placeholder="None"></label>
@@ -71,7 +71,7 @@
               <label>Per-session limit<input type="number" name="perStreamLimit" min="1" placeholder="None"></label>
             </div>
             <label>Description<textarea name="description" maxlength="2000" rows="3"></textarea></label>
-            <p class="management-note">The deterministic action is used only when “Deterministic bot” is selected. AI is intentionally not available here.</p>
+            <p class="management-note">The automated action is used only for deterministic bot rewards. AI chat is configured separately.</p>
             <button type="submit">Create reward</button>
           </form>
         </details>
@@ -101,7 +101,7 @@
       {{else}}
         <p class="muted">No earning policies are configured.</p>
       {{/if}}
-      <p class="management-note">Earning policies are shown here because they drive the current point service. This dashboard does not invent policy mutation endpoints that the backend does not currently provide.</p>
+      <p class="management-note">Earning policies are shown here for visibility. Policy editing is not available from this dashboard yet.</p>
     </article>
   </div>
 </section>
