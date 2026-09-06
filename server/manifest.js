@@ -6,6 +6,7 @@ const Schwifty = require('@hapipal/schwifty');
 const Cookie = require('@hapi/cookie');
 const Vision = require('@hapi/vision');
 const App = require('../lib');
+const InProcessRuntimeState = require('../lib/runtime-state/in-process-runtime-state');
 
 const databaseFilename = process.env.DATABASE_FILE || Path.join(process.cwd(), 'streamzone.sqlite');
 
@@ -38,3 +39,7 @@ module.exports = {
         ]
     }
 };
+
+// Runtime state is deliberately outside the persistence models. A deployment can
+// replace this instance with a Redis-backed RuntimeState without changing executors.
+module.exports.server.app = { runtimeState: new InProcessRuntimeState() };

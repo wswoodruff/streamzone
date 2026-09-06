@@ -145,6 +145,28 @@ Use `PATCH` or `DELETE` on `/streamers/{streamerId}/commands/{commandId}` to man
 existing command. The authenticated `GET` endpoint returns enabled commands only; pass
 `includeDisabled=true` when a management client needs the complete configuration.
 
+## Session and runtime state
+
+Durable interaction state is accessed exclusively through
+`StreamSessionStateService`, keyed by `(streamSessionId, namespace, key)`. Writes use a
+versioned compare-and-swap operation (or the retrying `update` helper), are JSON
+serialized, and are limited to 16 KiB per value, 256 values, and 256 KiB per session by
+default. `platform.*` namespaces are reserved; feature executors identify themselves
+and may access only `feature.<featureId>.*`. Executors must not query the infrastructure
+model directly.
+
+Raw chat message text is not durable state. The exceptional
+`containsMessageContent` write option requires both a specific `purpose` and an expiry
+within 24 hours; callers remain responsible for reducing content to the minimum needed.
+All persistent state is deleted when its stream session ends (and cascades if the
+session is deleted). Expired records are hidden and removed on read, while
+`purgeExpired()` provides the periodic, at-least-daily storage sweep.
+
+Cooldowns and high-volume event deduplication use the separate `RuntimeState`
+interface. The default process-local adapter is intentionally non-durable and clears
+session keys at session end. A Redis adapter can replace it without changing command
+or feature executors.
+
 ## Project layout
 
 - `server/manifest.js` registers Schwifty, Schmervice, and the application plugin.

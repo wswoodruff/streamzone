@@ -25,12 +25,13 @@ else {
         require('../migrations/005-create-streamer-invitations'),
         require('../migrations/006-create-chat-identities'),
         require('../migrations/007-create-channel-relationships'),
-        require('../migrations/008-create-stream-sessions')
+        require('../migrations/008-create-stream-sessions'),
+        require('../migrations/009-create-stream-session-state')
     ];
     const Streamer = require('../lib/models/streamer');
     const User = require('../lib/models/user');
 
-    const expectedTables = ['ChannelRelationship', 'ChatIdentity', 'ChatUser', 'Command', 'Session', 'Source', 'Stream', 'StreamSession', 'Streamer', 'StreamerInvitation', 'StreamerMembership', 'User'];
+    const expectedTables = ['ChannelRelationship', 'ChatIdentity', 'ChatUser', 'Command', 'Session', 'Source', 'Stream', 'StreamSession', 'StreamSessionState', 'Streamer', 'StreamerInvitation', 'StreamerMembership', 'User'];
 
     const makeDatabase = async () => {
         const knex = Knex({
@@ -92,6 +93,9 @@ else {
         ]);
         Assert.deepEqual(await foreignKeys(knex, 'StreamSession'), [
             { from: 'streamerId', referencedTable: 'Streamer', onDelete: 'CASCADE' }
+        ]);
+        Assert.deepEqual(await foreignKeys(knex, 'StreamSessionState'), [
+            { from: 'streamSessionId', referencedTable: 'StreamSession', onDelete: 'CASCADE' }
         ]);
         Assert.deepEqual((await foreignKeys(knex, 'StreamerMembership')).sort((a, b) => a.from.localeCompare(b.from)), [
             { from: 'streamerId', referencedTable: 'Streamer', onDelete: 'CASCADE' },
