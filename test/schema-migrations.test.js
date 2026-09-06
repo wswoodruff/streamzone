@@ -28,12 +28,13 @@ else {
         require('../migrations/008-create-stream-sessions'),
         require('../migrations/009-create-stream-session-state'),
         require('../migrations/010-create-participants'),
-        require('../migrations/011-create-point-economy')
+        require('../migrations/011-create-point-economy'),
+        require('../migrations/012-create-rewards')
     ];
     const Streamer = require('../lib/models/streamer');
     const User = require('../lib/models/user');
 
-    const expectedTables = ['ChannelRelationship', 'ChatIdentity', 'ChatUser', 'Command', 'EarningPolicy', 'ParticipantActivityEvent', 'PointAccount', 'PointLedgerEntry', 'Session', 'Source', 'Stream', 'StreamSession', 'StreamSessionParticipant', 'StreamSessionState', 'Streamer', 'StreamerInvitation', 'StreamerMembership', 'StreamerParticipant', 'User'];
+    const expectedTables = ['ChannelRelationship', 'ChatIdentity', 'ChatUser', 'Command', 'EarningPolicy', 'ParticipantActivityEvent', 'PointAccount', 'PointLedgerEntry', 'RewardDefinition', 'RewardExecutorConfiguration', 'RewardRedemption', 'Session', 'Source', 'Stream', 'StreamSession', 'StreamSessionParticipant', 'StreamSessionState', 'Streamer', 'StreamerInvitation', 'StreamerMembership', 'StreamerParticipant', 'User'];
 
     const makeDatabase = async () => {
         const knex = Knex({
