@@ -19,8 +19,8 @@ test('owner signs in, sees seeded management state, and signs out', async ({ pag
     await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Commands' })).toBeVisible();
     await expect(page.locator('#stream .status-panel h3')).toBeVisible();
-    await expect(page.getByText('Twitch', { exact: true })).toBeVisible();
-    await expect(page.getByText('YouTube', { exact: true })).toBeVisible();
+    await expect(page.locator('#sources').getByRole('heading', { name: 'Twitch', exact: true }).first()).toBeVisible();
+    await expect(page.locator('#sources').getByRole('heading', { name: 'YouTube', exact: true }).first()).toBeVisible();
     await expect(page.locator('#commands').getByRole('heading', { name: '!schedule' })).toBeVisible();
     await expect(page.getByText('Moderator · 15s session', { exact: true })).toBeVisible();
 
@@ -70,7 +70,7 @@ test('owner manages invitations and standalone AI from the dashboard', async ({ 
     await page.getByRole('textbox', { name: 'Streamer instruction', exact: true }).fill(instruction);
     await page.getByRole('button', { name: 'Create draft' }).click();
     await expect(page.getByRole('status')).toContainText('AI instruction draft created');
-    await expect(page.getByText(instruction, { exact: true })).toBeVisible();
+    await expect(page.locator('#ai .instruction-copy').filter({ hasText: instruction }).first()).toHaveText(instruction);
 });
 
 test('owner creates, edits, disables, and deletes a command', async ({ page }, testInfo) => {
