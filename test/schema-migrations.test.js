@@ -22,10 +22,11 @@ else {
     const createCommandTables = require('../migrations/003-create-command-tables');
     const renameModelTables = require('../migrations/004-rename-model-tables');
     const createStreamerMemberships = require('../migrations/005-create-streamer-memberships');
+    const createStreamerInvitations = require('../migrations/006-create-streamer-invitations');
     const Streamer = require('../lib/models/streamer');
     const User = require('../lib/models/user');
 
-    const expectedTables = ['Command', 'Session', 'Source', 'Stream', 'Streamer', 'StreamerMembership', 'User'];
+    const expectedTables = ['Command', 'Session', 'Source', 'Stream', 'Streamer', 'StreamerInvitation', 'StreamerMembership', 'User'];
 
     const makeDatabase = async () => {
         const knex = Knex({
@@ -71,6 +72,7 @@ else {
 
         await renameModelTables.up(knex);
         await createStreamerMemberships.up(knex);
+        await createStreamerInvitations.up(knex);
         await knex('StreamerMembership').insert({ userId, streamerId, role: 'owner' });
 
         Assert.deepEqual(await tableNames(knex), expectedTables);
@@ -120,7 +122,9 @@ else {
         await migrateLowercaseSchema(knex);
         await renameModelTables.up(knex);
         await createStreamerMemberships.up(knex);
+        await createStreamerInvitations.up(knex);
 
+        await createStreamerInvitations.down(knex);
         await createStreamerMemberships.down(knex);
         await renameModelTables.down(knex);
 

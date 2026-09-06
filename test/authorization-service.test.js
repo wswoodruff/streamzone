@@ -48,6 +48,8 @@ Test('admins cannot manage an owner membership', () => {
         (error) => error instanceof Service.AuthorizationError && error.code === 'FORBIDDEN'
     );
     Assert.doesNotThrow(() => service.assertCanManageRole('admin', 'editor'));
+    Assert.throws(() => service.assertCanManageRole('admin', 'admin'), { code: 'FORBIDDEN' });
+    Assert.throws(() => service.assertCanManageRole('editor', 'editor'), { code: 'FORBIDDEN' });
     Assert.doesNotThrow(() => service.assertCanManageRole('owner', 'owner'));
 });
 
