@@ -4,6 +4,7 @@ const Path = require('node:path');
 const Schmervice = require('@hapipal/schmervice');
 const Schwifty = require('@hapipal/schwifty');
 const Cookie = require('@hapi/cookie');
+const Inert = require('@hapi/inert');
 const Vision = require('@hapi/vision');
 const App = require('../lib');
 const InProcessRuntimeState = require('../lib/runtime-state/in-process-runtime-state');
@@ -34,6 +35,7 @@ module.exports = {
             },
             Schmervice,
             Cookie,
+            Inert,
             Vision,
             App
         ]
