@@ -3,11 +3,13 @@
 const Assert = require('node:assert/strict');
 const Test = require('node:test');
 const { startServer } = require('./helpers/server');
+const InProcessRuntimeState = require('../lib/runtime-state/in-process-runtime-state');
 const TestConsoleRuntime = require('../tools/test-console/runtime');
 const ConsoleAiProvider = require('../tools/test-console/mock-ai-provider');
 
 Test('test console simulates multiple terminals against shared runtime state and standalone AI', async (t) => {
     const context = await startServer(t);
+    context.server.app.runtimeState = new InProcessRuntimeState();
     context.server.app.aiProvider = new ConsoleAiProvider();
     const runtime = new TestConsoleRuntime(context.server);
     const streamer = await context.models.Streamer.query().insert({ slug: 'console-streamer', displayName: 'Console Streamer' });

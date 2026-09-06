@@ -39,7 +39,7 @@ else {
     const tableNames = async (knex) => (await knex('sqlite_master')
         .select('name')
         .where({ type: 'table' })
-        .whereNotLike('name', 'sqlite_%'))
+        .whereNot('name', 'like', 'sqlite_%'))
         .map(({ name }) => name)
         .sort();
 

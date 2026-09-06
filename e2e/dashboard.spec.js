@@ -12,16 +12,15 @@ test('dashboard requires an authenticated session', async ({ page }) => {
 test('owner signs in, sees seeded management state, and signs out', async ({ page }) => {
     await loginAsOwner(page);
 
-    await expect(page.getByRole('heading', { name: 'Hosted creators' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Aurora Live' })).toBeVisible();
-    await expect(page.getByText('@aurora-live · 2 sources')).toBeVisible();
-
-    const rows = page.locator('tbody tr');
-    await expect(rows).toHaveCount(2);
-    await expect(rows).toContainText(['Sunday Launch Show', 'Sunday Launch Show']);
-    await expect(page.getByRole('cell', { name: 'twitch', exact: true })).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'youtube', exact: true })).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'live', exact: true })).toHaveCount(2);
+    await expect(page.getByText('@aurora-live', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Stream session' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Commands' })).toBeVisible();
+    await expect(page.getByText('Sunday Launch Show', { exact: true })).toBeVisible();
+    await expect(page.getByText('Twitch', { exact: true })).toBeVisible();
+    await expect(page.getByText('YouTube', { exact: true })).toBeVisible();
+    await expect(page.getByText('!schedule', { exact: true })).toBeVisible();
+    await expect(page.getByText('Moderator · 15s session', { exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: 'Sign out' }).click();
     await expect(page).toHaveURL(/\/$/);

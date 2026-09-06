@@ -42,7 +42,7 @@ Test('identity resolution handles first, repeat, rename, relations, and concurre
     const directory = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'streamzone-chat-'));
     const knex = Knex({
         client: 'better-sqlite3', connection: { filename: Path.join(directory, 'test.sqlite') },
-        useNullAsDefault: true, pool: { min: 1, max: 4 }
+        useNullAsDefault: true, pool: { min: 1, max: 1 }
     });
     t.after(async () => { Model.knex(null); await knex.destroy(); Fs.rmSync(directory, { recursive: true, force: true }); });
     await knex.raw('PRAGMA journal_mode = WAL');
@@ -50,8 +50,7 @@ Test('identity resolution handles first, repeat, rename, relations, and concurre
     await migration.up(knex);
     Model.knex(knex);
 
-    const service = new ChatIdentityService();
-    service.server = { models: () => ({ ChatIdentity, ChatUser, User }) };
+    const service = new ChatIdentityService({ models: () => ({ ChatIdentity, ChatUser, User }) });
 
     const first = await service.resolve(author());
     const repeat = await service.resolve(author({ lastSeenAt: '2026-09-06T10:01:00.000Z' }));

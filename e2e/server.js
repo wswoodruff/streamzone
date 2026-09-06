@@ -5,7 +5,7 @@ const Os = require('node:os');
 const Path = require('node:path');
 
 const OWNER = {
-    email: 'owner@streamzone.test',
+    email: 'owner@example.com',
     displayName: 'Morgan Streamer',
     password: 'streamzone-owner-password'
 };
