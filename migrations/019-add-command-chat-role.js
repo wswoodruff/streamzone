@@ -1,10 +1,10 @@
 'use strict';
 
-const chatRoles = ['everyone', 'moderator', 'supermod'];
+const chatRoles = ['everyone', 'moderator', 'supermod', 'owner'];
 
 exports.up = async (knex) => {
     await knex.schema.alterTable('Command', (table) => {
-        table.enum('requiredChatRole', chatRoles).notNullable().defaultTo('everyone');
+        table.string('requiredChatRole', 20).notNullable().defaultTo('everyone');
     });
 };
 

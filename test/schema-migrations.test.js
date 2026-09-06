@@ -36,7 +36,8 @@ else {
         require('../migrations/016-instruction-lifecycle'),
         require('../migrations/017-ai-feature-pricing'),
         require('../migrations/018-create-ai-invocations'),
-        require('../migrations/019-add-command-chat-role')
+        require('../migrations/019-add-command-chat-role'),
+        require('../migrations/020-expand-command-chat-role')
     ];
     const Streamer = require('../lib/models/streamer');
     const User = require('../lib/models/user');
@@ -89,6 +90,8 @@ else {
         await knex('Command').insert({ streamerId, name: 'hello', responseTemplate: 'Hello!' });
         Assert.equal((await knex('Command').first()).cooldownScope, 'streamer');
         Assert.equal((await knex('Command').first()).requiredChatRole, 'everyone');
+        await knex('Command').insert({ streamerId, name: 'owner-only', responseTemplate: 'Owner!', requiredChatRole: 'owner' });
+        Assert.equal((await knex('Command').where({ name: 'owner-only' }).first()).requiredChatRole, 'owner');
         const [userId] = await knex('User').insert({ email: 'alice@example.com', displayName: 'Alice', passwordHash: 'hash' });
         await knex('Session').insert({ id: 'a'.repeat(64), userId, expiresAt: new Date(Date.now() + 60_000).toISOString() });
         await knex('StreamerMembership').insert({ userId, streamerId, role: 'owner' });
