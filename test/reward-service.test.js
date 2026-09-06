@@ -45,13 +45,13 @@ else {
         Assert.equal(await context.models.RewardExecutorConfiguration.query().findById(deterministic.id), undefined);
     });
 
-    Test('reward service rejects AI as a fulfillment type instead of adapting it', async (t) => {
+    Test('reward service rejects unsupported fulfillment types', async (t) => {
         const context = await startServer(t);
         const owner = await createUser(context);
         const streamer = await createTenant(context, owner);
         await Assert.rejects(
             context.services.rewardService.createReward(owner.user.id, streamer.id, {
-                name: 'Obsolete AI reward', pointCost: 10, fulfillmentType: 'ai'
+                name: 'Unsupported fulfillment', pointCost: 10, fulfillmentType: 'external'
             }),
             (error) => error.code === 'UNSUPPORTED_FULFILLMENT_TYPE'
         );

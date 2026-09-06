@@ -12,7 +12,8 @@ Build a dependable multi-tenant service where streamers configure commands and c
 - `User` plus `StreamerMembership` provides tenant-scoped dashboard authorization with `viewer`, `editor`, `admin`, and `owner` capabilities.
 - The owner-management UI covers team/invitations, rewards and points, standalone AI configuration/instructions, command CRUD, and stream/source/session management.
 - The fresh-deployment relational schema is defined in `migrations/001-initial-schema.js`.
-- Provider-neutral audience identity, channel relationships, streamer/session participation, activity accounting, point balances/ledger entries, rewards, and standalone AI persistence/services are present.
+- Provider-neutral audience identity, channel relationships, streamer/session participation, activity accounting, point balances/ledger entries, and rewards persistence/services are present.
+- Standalone AI persistence and services are present through `AiFeatureConfiguration`, streamer instruction versions, and `AiInvocation`.
 - Every provider `Stream` is created inside one same-streamer `StreamSession`; simulcast streams share the StreamSession while retaining separate provider/source records.
 - Commands support normalized names, response templates, enable/disable state, cooldown seconds/scope, and chat roles `everyone`, `moderator`, `supermod`, and `owner`.
 - `lib/runtime/` defines `ChatMessage`, `InteractionContext`, the ordered runtime pipeline, `InteractionOutcome`, `ChatResponse`, command authorization, and cooldown behavior.
@@ -29,7 +30,8 @@ Build a dependable multi-tenant service where streamers configure commands and c
 - Provider adapters translate external events to/from the contracts in `lib/runtime/`; provider payload shapes do not enter command execution.
 - The runtime stage order remains explicit: deduplication, identity resolution, relationship refresh, StreamSession resolution, moderation, command matching, command authorization, cooldowns, execution, accounting, audit, and response delivery.
 - Durable StreamSession state and high-volume runtime state remain separate abstractions.
-- Rewards use `deterministicBot` or `manual` fulfillment. Standalone AI is configured and accounted for through `AiFeatureConfiguration` and `AiInvocation`.
+- Rewards use `deterministicBot` or `manual` fulfillment through the reward domain.
+- Standalone AI is configured through `AiFeatureConfiguration`, executed through `AiInvocation`, and versioned streamer instructions remain its own lifecycle.
 - Management roles and command chat roles are separate authorization systems.
 
 ## Ready Queue

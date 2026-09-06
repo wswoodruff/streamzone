@@ -38,6 +38,6 @@ After setup the terminal acts like one simulated chat client. Enter messages suc
 
 The console AI provider is deliberately a deterministic mock. It exercises prompt composition, standalone `AiFeatureConfiguration`, `AiInvocation`, point reservation/settlement, cooldowns, and response delivery without making an external model request.
 
-## AI is not a reward
+## Standalone AI flow
 
-AI is a streamer-scoped channel capability. The console's `/ai` command writes `AiFeatureConfiguration` keyed directly by `streamerId` and publishes/uses a streamer AI instruction version. Invoking `!ai` goes through `AiFeatureService` and `AiInvocation`; it never creates a `RewardDefinition`, `RewardRedemption`, or reward executor record. Rewards support only `deterministicBot` and `manual` fulfillment.
+The console's `/ai` command configures `AiFeatureConfiguration` for the selected streamer and publishes or uses a streamer AI instruction version. Invoking `!ai` goes through `AiFeatureService` and `AiInvocation`, with point reservation and settlement handled by the shared point economy.

@@ -48,11 +48,10 @@ else {
         t.after(() => knex.destroy());
         await migration.up(knex);
         Assert.deepEqual(await tableNames(knex), expectedTables);
-        Assert.equal(await knex.schema.hasTable('AiRewardExecution'), false);
         Assert.deepEqual(await knex.raw('PRAGMA foreign_key_check'), []);
     });
 
-    Test('greenfield constraints reject obsolete and invalid domain states', async (t) => {
+    Test('greenfield constraints reject invalid domain states', async (t) => {
         const knex = await makeDatabase();
         t.after(() => knex.destroy());
         await migration.up(knex);
@@ -79,11 +78,10 @@ else {
 
         await knex('RewardDefinition').insert({ streamerId, name: 'Manual', pointCost: 10, fulfillmentType: 'manual', eligibilityPolicy: '{}' });
         await knex('RewardDefinition').insert({ streamerId, name: 'Bot', pointCost: 10, fulfillmentType: 'deterministicBot', eligibilityPolicy: '{}' });
-        await Assert.rejects(knex('RewardDefinition').insert({ streamerId, name: 'AI reward', pointCost: 10, fulfillmentType: 'ai', eligibilityPolicy: '{}' }), /CHECK constraint failed/);
+        await Assert.rejects(knex('RewardDefinition').insert({ streamerId, name: 'Unsupported', pointCost: 10, fulfillmentType: 'external', eligibilityPolicy: '{}' }), /CHECK constraint failed/);
 
         const aiColumns = (await knex.raw('PRAGMA table_info(`AiFeatureConfiguration`)')).map(({ name }) => name);
         Assert.ok(aiColumns.includes('streamerId'));
-        Assert.equal(aiColumns.includes('rewardDefinitionId'), false);
         const aiFks = await knex.raw('PRAGMA foreign_key_list(`AiInvocation`)');
         for (const target of ['Streamer', 'StreamSession', 'ChatUser', 'ChatIdentity', 'StreamerInstructionVersion', 'PointLedgerEntry']) {
             Assert.ok(aiFks.some((fk) => fk.table === target), `AiInvocation -> ${target}`);

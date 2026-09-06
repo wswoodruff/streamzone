@@ -1,6 +1,6 @@
 # Streamzone
 
-Streamzone is a pre-v1 multi-tenant platform for interactive livestream chat experiences. The application keeps provider-specific chat transport outside the domain/runtime layer so commands, rewards, points, and standalone AI can operate against the same internal contracts across streaming providers.
+Streamzone is a pre-v1 multi-tenant platform for interactive livestream chat experiences. The application keeps provider-specific chat transport outside the domain/runtime layer so commands, rewards, and points can operate against the same internal contracts across streaming providers. Standalone AI uses those provider-neutral contracts as an independent channel feature.
 
 The server uses Hapi and hapipal, Vision/Handlebars for server-rendered management UI, Schwifty/Objection/Knex with SQLite for local persistence, Schmervice for application services, and Hapi Cookie for authenticated web sessions.
 
@@ -15,7 +15,8 @@ The remaining delivery roadmap lives in [`STREAMZONE_PLAN.md`](STREAMZONE_PLAN.m
 - Commands are streamer-scoped deterministic command definitions with response templates, cooldowns, and required chat roles (`everyone`, `moderator`, `supermod`, `owner`).
 - `lib/runtime/` defines the provider-neutral `ChatMessage`, `InteractionContext`, ordered runtime stages, `InteractionOutcome`, and `ChatResponse` contracts. Provider ingestion and concrete production execution are not yet wired end to end.
 - Durable interaction state lives in `StreamSessionState`, while cooldown/deduplication state uses the replaceable `RuntimeState` interface. The default server uses an in-process runtime-state implementation.
-- Points and rewards are separate from AI. Rewards use deterministic-bot or manual fulfillment; standalone AI uses `AiFeatureConfiguration`, versioned streamer instructions, and `AiInvocation`.
+- The point economy uses `PointAccount` and `PointLedgerEntry`. Rewards use deterministic-bot or manual fulfillment through `RewardDefinition`, `RewardExecutorConfiguration`, and `RewardRedemption`.
+- Standalone AI uses `AiFeatureConfiguration`, versioned streamer instructions, and `AiInvocation`.
 - `migrations/001-initial-schema.js` defines the complete relational schema for a fresh deployment.
 
 ## Local setup
@@ -53,7 +54,7 @@ npm run ui:capture
 
 ## Owner dashboard
 
-`/dashboard` is the authenticated server-rendered management shell. It exposes current streamer context plus command management, creator-team/invitation management, rewards and points controls, standalone AI configuration, and streamer instruction workflows.
+`/dashboard` is the authenticated server-rendered management shell. It exposes current streamer context plus command management, creator-team/invitation management, and rewards and points controls. Standalone AI configuration and streamer instruction workflows have their own management area.
 
 Stream topology is managed at `/dashboard/stream-management`, where authorized users can manage `Source` records, `StreamSession` lifecycle, and provider `Stream` occurrences. The UI keeps StreamSession and provider-broadcast concepts distinct: create/select the Streamzone session, then attach one provider occurrence per source to that session.
 
@@ -66,7 +67,7 @@ Management authorization is capability-based and tenant-scoped:
 | Role | Capabilities |
 | --- | --- |
 | `viewer` | Read management data. |
-| `editor` | Viewer access plus manage sources, streams/sessions, commands, rewards/fulfillment, standalone AI configuration, and AI instruction drafts. |
+| `editor` | Viewer access plus manage sources, streams/sessions, commands, and rewards/fulfillment. Editors can also configure standalone AI and edit AI instruction drafts. |
 | `admin` | Editor access plus manage memberships/invitations and publish AI instructions. |
 | `owner` | Admin access plus delete the streamer and transfer ownership. |
 
@@ -87,8 +88,6 @@ Durable session-scoped application state is keyed by `(streamSessionId, namespac
 The point economy uses `PointAccount` for balances and `PointLedgerEntry` for auditable balance changes. Earning policies and participant activity are modeled separately from redemption.
 
 `RewardDefinition` supports two fulfillment types: `deterministicBot` and `manual`. `RewardExecutorConfiguration` stores deterministic executor configuration, and `RewardRedemption` records the participant, point cost, StreamSession context, status, and failure/fulfillment lifecycle.
-
-AI is not a reward fulfillment type and does not use reward executor records.
 
 ## Standalone AI
 
@@ -129,7 +128,8 @@ GitHub Actions performs clean `npm ci` installs, unit tests, syntax checks, and 
 - `server/manifest.js` configures Hapi, Schwifty, Schmervice, Cookie, Inert, Vision, SQLite, migrations, and the default runtime-state implementation.
 - `lib/index.js` uses haute-couture to discover and compose application components.
 - `lib/routes/` contains resource and server-rendered web routes.
-- `lib/services/` contains authorization, streaming, audience, economy, rewards, dashboard, instruction, and standalone AI services.
+- `lib/services/` contains authorization, streaming, audience, economy, rewards, dashboard, and instruction services.
+- Standalone AI services use their own `lib/services/ai-feature-service.js` and `lib/services/ai-invocation-service.js` boundaries.
 - `lib/models/` contains the current persistence model.
 - `lib/runtime/` contains provider-neutral interaction contracts and stages.
 - `lib/runtime-state/` contains the replaceable runtime-state boundary and in-process implementation.
