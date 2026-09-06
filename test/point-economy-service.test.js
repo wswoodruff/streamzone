@@ -10,10 +10,12 @@ catch { databaseAvailable = false; }
 
 const now = '2026-09-06T12:00:00.000Z';
 const actor = { type: 'system', id: 'economy-test' };
+let fixtureSequence = 0;
 
 const fixture = async (t) => {
     const context = await startServer(t);
-    const streamer = await context.models.Streamer.query().insert({ slug: `points-${Math.random()}`, displayName: 'Points' });
+    fixtureSequence += 1;
+    const streamer = await context.models.Streamer.query().insert({ slug: `points-${fixtureSequence}`, displayName: 'Points' });
     const user = await context.models.ChatUser.query().insert({ status: 'active' });
     const session = await context.models.StreamSession.query().insert({ streamerId: streamer.id, title: 'Live', status: 'live' });
     const base = { streamerId: streamer.id, chatUserId: user.id, actor, occurredAt: now };

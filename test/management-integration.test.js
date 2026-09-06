@@ -132,7 +132,7 @@ else {
         Assert.equal(wrongPath.statusCode, 404);
         Assert.equal((await context.models.Command.query().findById(command.id)).responseTemplate, 'Hello!');
 
-        const foreignSession = await context.models.StreamSession.query().insert({ streamerId: bobTenant.id, title: 'Bob session' });
+        const foreignSession = await context.models.StreamSession.query().insert({ streamerId: bobTenant.id, title: 'Bob session', status: 'scheduled' });
         const crossTenantStream = await Helpers.injectAuthenticated(context, alice, {
             method: 'POST', url: '/streams', payload: { sourceId: source.id, streamSessionId: foreignSession.id, title: 'Wrong tenant' }
         });
@@ -147,7 +147,7 @@ else {
         const original = await Helpers.createSource(context, first);
         const sameTenant = await Helpers.createSource(context, first);
         const otherTenant = await Helpers.createSource(context, second);
-        const session = await context.models.StreamSession.query().insert({ streamerId: first.id, title: 'Source move' });
+        const session = await context.models.StreamSession.query().insert({ streamerId: first.id, title: 'Source move', status: 'scheduled' });
         const stream = await context.models.Stream.query().insert({ sourceId: original.id, streamSessionId: session.id, status: 'scheduled' });
 
         const allowed = await Helpers.injectAuthenticated(context, user, { method: 'PATCH', url: `/streams/${stream.id}`, payload: { sourceId: sameTenant.id } });
@@ -176,7 +176,7 @@ else {
         const owner = await Helpers.createUser(context);
         const streamer = await Helpers.createTenant(context, owner);
         const source = await Helpers.createSource(context, streamer);
-        const session = await context.models.StreamSession.query().insert({ streamerId: streamer.id, title: 'Cascade' });
+        const session = await context.models.StreamSession.query().insert({ streamerId: streamer.id, title: 'Cascade', status: 'scheduled' });
         await context.models.Stream.query().insert({ sourceId: source.id, streamSessionId: session.id, status: 'live' });
         await context.models.Command.query().insert({ streamerId: streamer.id, ...commandPayload });
 

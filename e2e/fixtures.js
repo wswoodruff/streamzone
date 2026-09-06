@@ -3,7 +3,7 @@
 const { test: base, expect } = require('@playwright/test');
 
 const OWNER = {
-    email: 'owner@streamzone.test',
+    email: 'owner@example.com',
     password: 'streamzone-owner-password'
 };
 
@@ -31,7 +31,7 @@ const loginAsOwner = async (page) => {
     await page.getByRole('button', { name: 'Sign in' }).click();
 
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(page.getByRole('heading', { name: 'Hello, Morgan Streamer.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Aurora Live' })).toBeVisible();
 };
 
 module.exports = { expect, loginAsOwner, test };
