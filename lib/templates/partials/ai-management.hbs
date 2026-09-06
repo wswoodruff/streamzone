@@ -5,8 +5,8 @@
   </div>
 
   <div class="architecture-note panel">
-    <strong>Standalone capability</strong>
-    <span>AI is configured per streamer and accounted through AI invocations. It is not a reward definition or reward executor.</span>
+    <strong>AI chat assistant</strong>
+    <span>Configure the creator's AI chat command and point cost here. Rewards are managed separately.</span>
   </div>
 
   <div class="management-grid management-grid--sidebar">
@@ -31,7 +31,7 @@
           <input type="hidden" name="streamerId" value="{{currentStreamer.id}}">
           <div class="management-form-grid">
             <label>State<select name="enabled"><option value="true" {{#if ai.enabled}}selected{{/if}}>Enabled</option><option value="false" {{#unless ai.enabled}}selected{{/unless}}>Disabled</option></select></label>
-            <label>Invocation command<input name="invocationCommand" value="{{ai.invocationCommand}}" maxlength="50" pattern="[a-z0-9][a-z0-9_-]*" required></label>
+            <label>Invocation command<input name="invocationCommand" value="{{ai.invocationCommand}}" maxlength="50" pattern="[a-z0-9][a-z0-9_\-]*" required></label>
             <label>Provider<input name="provider" value="{{ai.provider}}" maxlength="80" placeholder="Provider identifier"></label>
             <label>Model<input name="model" value="{{ai.model}}" maxlength="160" placeholder="Model identifier"></label>
             <label>Point cost<input type="number" name="pointCost" value="{{ai.pointCost}}" min="1" required></label>
