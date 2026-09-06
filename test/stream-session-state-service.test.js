@@ -31,8 +31,8 @@ const setup = async (t, limits) => {
     });
     const [streamerId] = await knex('Streamer').insert({ slug: 'state', displayName: 'State' });
     const [streamSessionId] = await knex('StreamSession').insert({ streamerId, title: 'State test' });
-    const service = new StreamSessionStateService({ limits });
-    service.server = { models: () => ({ StreamSession, StreamSessionState }) };
+    const server = { models: () => ({ StreamSession, StreamSessionState }) };
+    const service = new StreamSessionStateService(server, { limits });
     return { knex, service, streamSessionId };
 };
 
