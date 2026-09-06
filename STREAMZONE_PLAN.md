@@ -35,14 +35,15 @@ AI, and response-delivery concerns must remain replaceable.
 
 ## Current state
 
-- Hapi serves public stream data and an authenticated creator dashboard.
+- Hapi serves public stream data and an authenticated, tenant-scoped creator dashboard.
 - SQLite/Objection models cover users, sessions, streamers, provider sources, streams,
-  and per-streamer text commands.
+  per-streamer text commands, memberships, and invitations. Database tables use the
+  models' singular PascalCase names.
 - Command configuration now has authenticated list/create/update/delete endpoints. The
   listing hides disabled commands unless requested. There is no chat ingestion or execution yet.
-- Authentication exists, but users are not associated with streamers. Consequently,
-  any authenticated user can currently mutate any streamer. This is the top security
-  and product-model gap and must be resolved before external deployment.
+- Membership roles and centralized capabilities protect management reads and writes;
+  invitations provide the membership onboarding path and streamer creation establishes
+  its creator as an owner atomically.
 - The UI does not yet expose streamer, source, stream, or command configuration forms.
 
 ## Architecture direction
@@ -67,23 +68,50 @@ add AI-backed executors only after authorization, limits, and observability are 
 - Templates are stored as text but are not rendered yet. A future renderer must use an
   allowlist of variables and must escape output appropriate to the destination.
 - Tenant authorization precedes provider credentials and live chat connections.
+- Keep one route definition per file beneath a resource-oriented `lib/routes/`
+  directory. Haute-couture discovers and composes those modules; route parity tests
+  must protect the complete HTTP surface during organization changes.
+- Use singular PascalCase table names matching model names (for example, `Streamer`,
+  `StreamerMembership`, and `Command`) for every new table and migration.
+- The role matrix is: viewers may read management data; editors additionally manage
+  sources, streams, and commands; admins additionally manage memberships and
+  invitations; owners additionally delete streamers and transfer ownership.
+- A streamer must always retain at least one owner once ownership is established.
+  Removing or demoting the final owner is forbidden; ownership transfer promotes an
+  existing member and demotes the transferring owner atomically.
+- For tenant-scoped resources, unauthenticated requests receive `401`, authenticated
+  non-members receive `404` so resource existence is not disclosed across tenants, and
+  members who lack a required capability receive `403`.
+- Public catalog queries and management queries are separate service operations and
+  routes. Public reads may include hosted streamers and live streams without membership
+  data; management and dashboard reads require authentication and are scoped to the
+  caller's memberships.
 
 ## Ready queue
 
 Work in this order unless a documented prerequisite or user instruction changes it.
+Completed prerequisites remain here to make the required execution order explicit.
 
-- [ ] **Associate users with streamers and enforce tenant authorization.** Add a
-  membership table with owner/admin/editor roles; centralize authorization; scope every
-  mutating streamer, source, stream, and command operation; add cross-tenant denial tests
-  and a migration path for existing rows.
+- [x] **Refactor to one route per file with haute-couture.** Preserve route parity with
+  composition tests while organizing route modules by resource. (2026-09-06)
+- [x] **Rename tables to singular PascalCase.** Add a forward migration that safely
+  handles SQLite case-only renames and schema tests for fresh and upgraded databases.
+  (2026-09-06)
+- [x] **Establish membership schema, role capabilities, and creator ownership.** Add
+  owner/admin/editor/viewer memberships, centralized capabilities, atomic creator-owner
+  creation, and a deterministic bootstrap path for legacy streamers. (2026-09-06)
+- [x] **Enforce authorization across management routes and dashboard queries.** Scope
+  all management reads and writes to memberships and cover same-tenant, cross-tenant,
+  role, and dashboard isolation behavior. (2026-09-06)
+- [x] **Add invitations and membership management endpoints.** Support invitation
+  creation, listing, revocation, and acceptance plus role updates/removal while enforcing
+  authority ordering and final-owner protection. (2026-09-06)
 - [ ] **Add command management to the dashboard.** Provide accessible forms for create,
   edit, enable/disable, cooldown, and delete; include validation and empty/error states.
-- [ ] **Define normalized chat contracts and deterministic matching.** Add plain domain
-  objects for messages/responses, configurable prefix parsing, case normalization, exact
-  token matching, argument extraction, and unit tests without provider SDKs.
-- [ ] **Implement runtime policy and text-template execution.** Enforce per-streamer and
-  per-user cooldowns, safely render an allowlisted variable set, cap output lengths, and
-  expose structured outcomes for ignored/rejected/executed messages.
+- [ ] **Normalize chat contracts and implement runtime execution.** Add provider-neutral
+  message/response objects, configurable deterministic matching, argument extraction,
+  cooldown policy, safe allowlisted template rendering, output limits, and structured
+  outcomes, all covered without provider SDKs.
 - [ ] **Build the first provider adapter.** Choose Twitch or YouTube based on explicit
   product priority; isolate credentials, reconnect/backoff, event deduplication, and send
   limits behind an adapter interface.
