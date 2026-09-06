@@ -68,6 +68,18 @@
 .instruction-finding--warning { border-color: rgba(246, 200, 111, 0.35); background: var(--warning-soft); }
 .instruction-finding--error { border-color: rgba(255, 135, 150, 0.35); background: var(--danger-soft); }
 
+#team .management-list__item {
+    flex-direction: column;
+    gap: 0.75rem;
+}
+#team .management-list__identity,
+#team .management-actions {
+    width: 100%;
+}
+#team .management-actions {
+    justify-content: flex-start;
+}
+
 @media (max-width: 58rem) {
     .management-grid, .management-grid--sidebar { grid-template-columns: 1fr; }
 }
