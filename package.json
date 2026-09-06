@@ -6,6 +6,8 @@
   "main": "lib/index.js",
   "scripts": {
     "start": "node server.js",
+    "console": "node tools/test-console/client.js",
+    "console:host": "node tools/test-console/host.js",
     "test": "node --test",
     "test:syntax": "find . -path ./node_modules -prune -o -name '*.js' -type f -print0 | xargs -0 -n1 node --check"
   },
@@ -21,6 +23,7 @@
     "@hapipal/schmervice": "^3.0.0",
     "@hapipal/schwifty": "^6.2.0",
     "better-sqlite3": "^12.2.0",
+    "enquirer": "^2.4.1",
     "handlebars": "^4.7.8",
     "knex": "^3.1.0",
     "objection": "^3.1.5"
