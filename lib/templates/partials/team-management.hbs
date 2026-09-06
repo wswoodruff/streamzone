@@ -1,0 +1,105 @@
+<section class="management-section" id="team" aria-labelledby="team-heading">
+  <div class="section-heading">
+    <div><p class="eyebrow">Access</p><h2 id="team-heading">Management team</h2></div>
+    {{#if permissions.manageMemberships}}<span class="capability capability--manage">Can manage</span>{{else}}<span class="capability">Restricted</span>{{/if}}
+  </div>
+
+  <div class="management-grid management-grid--sidebar">
+    <article class="panel">
+      <div class="panel-title-row"><h3>Role access</h3><span class="muted">{{team.actorRoleLabel}} account</span></div>
+      <div class="role-guide">
+        {{#each team.roleGuide}}
+          <div><strong>{{role}}</strong><span>{{summary}}</span></div>
+        {{/each}}
+      </div>
+    </article>
+
+    <article class="panel architecture-note">
+      <h3>Owner protection</h3>
+      <p>A creator must always retain at least one owner. The final owner cannot be removed or demoted until another owner exists.</p>
+    </article>
+  </div>
+
+  {{#if team.restricted}}
+    <div class="empty-state empty-state--restricted"><span class="empty-state__mark" aria-hidden="true">⌁</span><div><h3>Team details are restricted</h3><p>Admin or owner access is required to view and manage creator memberships and invitations.</p></div></div>
+  {{else}}
+    <div class="management-grid">
+      <article class="panel">
+        <div class="panel-title-row"><h3>Members</h3><span class="muted">{{team.total}} accounts</span></div>
+        <ul class="item-list management-list">
+          {{#each team.members}}
+            <li class="management-list__item">
+              <div class="management-list__identity">
+                <strong>{{displayName}}</strong>
+                {{#if email}}<span class="muted">{{email}}</span>{{/if}}
+                <div class="management-badges"><span class="role-badge">{{roleLabel}}</span>{{#if isFinalOwner}}<span class="status-pill status-pill--warning">Final owner</span>{{/if}}</div>
+                {{#if managementNote}}<span class="management-note">{{managementNote}}</span>{{/if}}
+              </div>
+              {{#if canUpdate}}
+                <div class="management-actions">
+                  <form class="management-form management-form--inline" method="post" action="/dashboard/team">
+                    <input type="hidden" name="streamerId" value="{{@root.currentStreamer.id}}">
+                    <input type="hidden" name="action" value="update-member">
+                    <input type="hidden" name="userId" value="{{userId}}">
+                    <label>Role for {{displayName}}
+                      <select name="role">
+                        {{#each roleOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+                      </select>
+                    </label>
+                    <button class="button button--secondary" type="submit">Update role</button>
+                  </form>
+                  {{#if canRemove}}
+                    <form class="management-form management-form--inline" method="post" action="/dashboard/team">
+                      <input type="hidden" name="streamerId" value="{{@root.currentStreamer.id}}">
+                      <input type="hidden" name="action" value="remove-member">
+                      <input type="hidden" name="userId" value="{{userId}}">
+                      <button class="button button--danger" type="submit">Remove member</button>
+                    </form>
+                  {{/if}}
+                </div>
+              {{/if}}
+            </li>
+          {{/each}}
+        </ul>
+      </article>
+
+      <article class="panel">
+        <div class="panel-title-row"><h3>Pending invitations</h3><span class="muted">{{team.pendingInvitationCount}} pending</span></div>
+        {{#if team.invitations.length}}
+          <ul class="item-list management-list">
+            {{#each team.invitations}}
+              <li class="management-list__item">
+                <div class="management-list__identity"><strong>{{email}}</strong><span class="muted">{{roleLabel}} · expires {{expiresLabel}}</span><span class="muted">Invited by {{inviterName}}</span></div>
+                {{#if canRevoke}}
+                  <form class="management-form management-form--inline" method="post" action="/dashboard/team">
+                    <input type="hidden" name="streamerId" value="{{@root.currentStreamer.id}}">
+                    <input type="hidden" name="action" value="revoke-invite">
+                    <input type="hidden" name="invitationId" value="{{id}}">
+                    <button class="button button--quiet" type="submit">Revoke</button>
+                  </form>
+                {{/if}}
+              </li>
+            {{/each}}
+          </ul>
+        {{else}}
+          <p class="muted">No active invitations are waiting for acceptance.</p>
+        {{/if}}
+
+        {{#if team.canInvite}}
+          <form class="management-form" method="post" action="/dashboard/team">
+            <input type="hidden" name="streamerId" value="{{currentStreamer.id}}">
+            <input type="hidden" name="action" value="create-invite">
+            <fieldset>
+              <legend>Invite a team member</legend>
+              <div class="management-form-grid">
+                <label>Email address<input type="email" name="email" autocomplete="email" required></label>
+                <label>Role<select name="role">{{#each team.invitationRoleOptions}}<option value="{{value}}">{{label}}</option>{{/each}}</select></label>
+              </div>
+              <button type="submit">Create invitation</button>
+            </fieldset>
+          </form>
+        {{/if}}
+      </article>
+    </div>
+  {{/if}}
+</section>

@@ -15,6 +15,7 @@
   </aside>
 
   <div class="management-content">
+    {{> management-feedback}}
     <section class="dashboard-hero" id="overview" aria-labelledby="dashboard-title">
       <div>
         <p class="eyebrow">Creator control room</p>
@@ -58,7 +59,7 @@
       <a class="metric-card" href="{{links.ai}}">
         <span class="metric-card__label">Standalone AI</span>
         <strong>{{ai.statusLabel}}</strong>
-        <span>{{#if ai.configured}}{{ai.invocationCommand}}{{else}}Channel capability{{/if}}</span>
+        <span>{{#if ai.configured}}{{ai.commandLabel}}{{else}}Channel capability{{/if}}</span>
       </a>
     </div>
 
@@ -115,30 +116,9 @@
       {{/if}}
     </section>
 
-    <section class="management-section" id="team" aria-labelledby="team-heading">
-      <div class="section-heading"><div><p class="eyebrow">Access</p><h2 id="team-heading">Management team</h2></div>{{#if permissions.manageMemberships}}<span class="capability capability--manage">Can manage</span>{{else}}<span class="capability">Restricted</span>{{/if}}</div>
-      {{#if team.restricted}}
-        <div class="empty-state empty-state--restricted"><span class="empty-state__mark" aria-hidden="true">⌁</span><div><h3>Team details are restricted</h3><p>Admin or owner access is required to view and manage creator memberships.</p></div></div>
-      {{else}}
-        <article class="panel"><div class="summary-row"><span><strong>{{team.total}}</strong> team members</span></div><ul class="item-list">{{#each team.members}}<li><div><strong>{{displayName}}</strong><span class="muted">Creator management account</span></div><span class="role-badge">{{roleLabel}}</span></li>{{/each}}</ul>{{#if team.hiddenCount}}<p class="panel-footnote">+ {{team.hiddenCount}} more team members</p>{{/if}}</article>
-      {{/if}}
-    </section>
-
-    <section class="management-section" id="rewards" aria-labelledby="rewards-heading">
-      <div class="section-heading"><div><p class="eyebrow">Audience economy</p><h2 id="rewards-heading">Rewards &amp; points</h2></div>{{#if permissions.manageRewards}}<span class="capability capability--manage">Can manage</span>{{else}}<span class="capability">Read only</span>{{/if}}</div>
-      <div class="split-grid">
-        <article class="panel"><div class="panel-title-row"><h3>Rewards</h3><span class="muted">{{rewards.enabled}} enabled</span></div>{{#if rewards.total}}<ul class="item-list item-list--compact">{{#each rewards.items}}<li><div><strong>{{name}}</strong><span class="muted">{{pointCost}} pts · {{fulfillmentLabel}}</span></div><span class="status-pill {{#if enabled}}status-pill--live{{else}}status-pill--neutral{{/if}}">{{statusLabel}}</span></li>{{/each}}</ul>{{#if rewards.hiddenCount}}<p class="panel-footnote">+ {{rewards.hiddenCount}} more rewards</p>{{/if}}{{else}}<p class="muted">No reward definitions are configured yet.</p>{{/if}}</article>
-        <article class="panel"><div class="panel-title-row"><h3>Points</h3><span class="muted">{{points.enabledPolicyCount}} earning policies enabled</span></div><dl class="stat-list"><div><dt>Participant accounts</dt><dd>{{points.participantCount}}</dd></div><div><dt>Available points</dt><dd>{{points.availableBalance}}</dd></div><div><dt>Lifetime earned</dt><dd>{{points.lifetimeEarned}}</dd></div></dl>{{#if points.policyCount}}<ul class="item-list item-list--compact">{{#each points.policies}}<li><div><strong>{{name}}</strong><span class="muted">{{points}} points per event</span></div><span class="status-pill {{#if enabled}}status-pill--live{{else}}status-pill--neutral{{/if}}">{{statusLabel}}</span></li>{{/each}}</ul>{{else}}<p class="muted">No earning policies are configured.</p>{{/if}}</article>
-      </div>
-    </section>
-
-    <section class="management-section" id="ai" aria-labelledby="ai-heading">
-      <div class="section-heading"><div><p class="eyebrow">Channel feature</p><h2 id="ai-heading">Standalone AI</h2></div>{{#if permissions.editAiInstructions}}<span class="capability capability--manage">Instruction access</span>{{else}}<span class="capability">Read only</span>{{/if}}</div>
-      <article class="panel ai-panel">
-        <div><div class="status-line"><span class="status-dot status-dot--{{ai.statusTone}}" aria-hidden="true"></span><span class="status-pill status-pill--{{ai.statusTone}}">{{ai.statusLabel}}</span></div>{{#if ai.configured}}<h3>{{ai.invocationCommand}}</h3>{{#if ai.ready}}<p class="muted">{{ai.provider}} · {{ai.model}} · {{ai.pointCost}} points per invocation</p>{{else}}<p class="muted">The channel AI configuration exists but is not currently ready to invoke.</p>{{/if}}{{else}}<h3>AI is separate from rewards</h3><p class="muted">No standalone AI feature configuration exists for this creator yet.</p>{{/if}}</div>
-        <div class="ai-panel__note"><strong>Architecture</strong><span>Streamer-scoped channel capability with independent configuration and invocation accounting.</span></div>
-      </article>
-    </section>
+    {{> team-management}}
+    {{> rewards-management}}
+    {{> ai-management}}
   </div>
 </div>
 {{else}}

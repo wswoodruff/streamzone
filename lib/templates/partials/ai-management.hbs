@@ -1,0 +1,104 @@
+<section class="management-section" id="ai" aria-labelledby="ai-heading">
+  <div class="section-heading">
+    <div><p class="eyebrow">Channel feature</p><h2 id="ai-heading">Standalone AI</h2></div>
+    {{#if ai.canEdit}}<span class="capability capability--manage">Can configure</span>{{else}}<span class="capability">Read only</span>{{/if}}
+  </div>
+
+  <div class="architecture-note panel">
+    <strong>Standalone capability</strong>
+    <span>AI is configured per streamer and accounted through AI invocations. It is not a reward definition or reward executor.</span>
+  </div>
+
+  <div class="management-grid management-grid--sidebar">
+    <article class="panel">
+      <div class="status-line"><span class="status-dot status-dot--{{ai.statusTone}}" aria-hidden="true"></span><span class="status-pill status-pill--{{ai.statusTone}}">{{ai.statusLabel}}</span></div>
+      <h3>{{ai.commandLabel}}</h3>
+      <dl class="detail-list management-details">
+        <div><dt>Provider</dt><dd>{{#if ai.provider}}{{ai.provider}}{{else}}Not set{{/if}}</dd></div>
+        <div><dt>Model</dt><dd>{{#if ai.model}}{{ai.model}}{{else}}Not set{{/if}}</dd></div>
+        <div><dt>Point cost</dt><dd>{{ai.pointCost}}</dd></div>
+        <div><dt>Cooldown</dt><dd>{{ai.cooldownSeconds}}s · {{ai.cooldownScope}}</dd></div>
+        <div><dt>Input limit</dt><dd>{{ai.maxInputChars}} chars</dd></div>
+        <div><dt>Output limit</dt><dd>{{ai.maxOutputChars}} chars / {{ai.maxOutputTokenCount}} tokens</dd></div>
+        <div><dt>Timeout</dt><dd>{{ai.timeoutMs}} ms</dd></div>
+      </dl>
+    </article>
+
+    {{#if ai.canEdit}}
+      <article class="panel">
+        <h3>Feature configuration</h3>
+        <form class="management-form" method="post" action="/dashboard/ai">
+          <input type="hidden" name="streamerId" value="{{currentStreamer.id}}">
+          <div class="management-form-grid">
+            <label>State<select name="enabled"><option value="true" {{#if ai.enabled}}selected{{/if}}>Enabled</option><option value="false" {{#unless ai.enabled}}selected{{/unless}}>Disabled</option></select></label>
+            <label>Invocation command<input name="invocationCommand" value="{{ai.invocationCommand}}" maxlength="50" pattern="[a-z0-9][a-z0-9_-]*" required></label>
+            <label>Provider<input name="provider" value="{{ai.provider}}" maxlength="80" placeholder="Provider identifier"></label>
+            <label>Model<input name="model" value="{{ai.model}}" maxlength="160" placeholder="Model identifier"></label>
+            <label>Point cost<input type="number" name="pointCost" value="{{ai.pointCost}}" min="1" required></label>
+            <label>Cooldown seconds<input type="number" name="cooldownSeconds" value="{{ai.cooldownSeconds}}" min="0" max="86400" required></label>
+            <label>Cooldown scope<select name="cooldownScope">{{#each ai.cooldownScopeOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></label>
+            <label>Max input characters<input type="number" name="maxInputChars" value="{{ai.maxInputChars}}" min="1" max="12000" required></label>
+            <label>Max output characters<input type="number" name="maxOutputChars" value="{{ai.maxOutputChars}}" min="1" max="12000" required></label>
+            <label>Max output tokens<input type="number" name="maxOutputTokenCount" value="{{ai.maxOutputTokenCount}}" min="1" max="4096" required></label>
+            <label>Timeout (ms)<input type="number" name="timeoutMs" value="{{ai.timeoutMs}}" min="100" max="30000" required></label>
+          </div>
+          <button type="submit">Save AI configuration</button>
+        </form>
+      </article>
+    {{/if}}
+  </div>
+
+  <article class="panel instruction-panel" aria-labelledby="instructions-heading">
+    <div class="panel-title-row"><div><p class="eyebrow">Prompt lifecycle</p><h3 id="instructions-heading">Streamer instructions</h3></div><span class="muted">{{instructions.total}} versions</span></div>
+    {{#if instructions.active}}<p class="management-note">Active version: #{{instructions.active.id}}, revision {{instructions.active.revision}}.</p>{{else}}<p class="management-note">No instruction version is currently active. AI invocation requires an active instruction.</p>{{/if}}
+
+    {{#if instructions.canCreate}}
+      <details class="management-editor management-editor--create">
+        <summary>Create instruction draft</summary>
+        <form class="management-form" method="post" action="/dashboard/ai/instructions">
+          <input type="hidden" name="streamerId" value="{{currentStreamer.id}}">
+          <input type="hidden" name="action" value="create">
+          <label>Streamer instruction<textarea name="instruction" maxlength="4000" rows="6" required></textarea></label>
+          <button type="submit">Create draft</button>
+        </form>
+      </details>
+    {{/if}}
+
+    {{#if instructions.total}}
+      <div class="management-stack">
+        {{#each instructions.items}}
+          <section class="management-card" aria-labelledby="instruction-{{id}}-title">
+            <div class="panel-title-row"><div><h3 id="instruction-{{id}}-title">Version #{{id}}</h3><span class="muted">Revision {{revision}}{{#if createdLabel}} · {{createdLabel}}{{/if}}</span></div><span class="status-pill {{#if canPublish}}status-pill--scheduled{{else}}status-pill--neutral{{/if}}">{{statusLabel}}</span></div>
+            <pre class="instruction-copy">{{instruction}}</pre>
+            {{#if hasFindings}}
+              <div class="instruction-findings" aria-label="Validation findings">
+                {{#each findings}}<div class="instruction-finding instruction-finding--{{severity}}"><strong>{{severityLabel}} · {{code}}</strong><span>{{message}}</span></div>{{/each}}
+              </div>
+            {{/if}}
+            {{#if needsWarningAcknowledgement}}<p class="management-note management-note--warning">Validation warnings must be acknowledged before this version can be published.</p>{{/if}}
+            {{#if canUpdate}}
+              <details class="management-editor">
+                <summary>Edit this version</summary>
+                <form class="management-form" method="post" action="/dashboard/ai/instructions">
+                  <input type="hidden" name="streamerId" value="{{@root.currentStreamer.id}}">
+                  <input type="hidden" name="action" value="update">
+                  <input type="hidden" name="versionId" value="{{id}}">
+                  <label>Instruction<textarea name="instruction" maxlength="4000" rows="6" required>{{instruction}}</textarea></label>
+                  <button class="button button--secondary" type="submit">Save draft</button>
+                </form>
+              </details>
+            {{/if}}
+            <div class="management-actions management-actions--buttons">
+              {{#if canValidate}}<form method="post" action="/dashboard/ai/instructions"><input type="hidden" name="streamerId" value="{{@root.currentStreamer.id}}"><input type="hidden" name="action" value="validate"><input type="hidden" name="versionId" value="{{id}}"><button class="button button--secondary" type="submit">Validate</button></form>{{/if}}
+              {{#if canAcknowledge}}<form method="post" action="/dashboard/ai/instructions"><input type="hidden" name="streamerId" value="{{@root.currentStreamer.id}}"><input type="hidden" name="action" value="acknowledge"><input type="hidden" name="versionId" value="{{id}}"><button class="button button--secondary" type="submit">Acknowledge warnings</button></form>{{/if}}
+              {{#if canPublish}}<form method="post" action="/dashboard/ai/instructions"><input type="hidden" name="streamerId" value="{{@root.currentStreamer.id}}"><input type="hidden" name="action" value="publish"><input type="hidden" name="versionId" value="{{id}}"><button type="submit">Publish</button></form>{{/if}}
+              {{#if canRollback}}<form method="post" action="/dashboard/ai/instructions"><input type="hidden" name="streamerId" value="{{@root.currentStreamer.id}}"><input type="hidden" name="action" value="rollback"><input type="hidden" name="versionId" value="{{id}}"><button class="button button--quiet" type="submit">Roll back to this version</button></form>{{/if}}
+            </div>
+          </section>
+        {{/each}}
+      </div>
+    {{else}}
+      <p class="muted">No streamer instruction versions exist yet.</p>
+    {{/if}}
+  </article>
+</section>

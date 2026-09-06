@@ -1,0 +1,107 @@
+<section class="management-section" id="rewards" aria-labelledby="rewards-heading">
+  <div class="section-heading">
+    <div><p class="eyebrow">Audience economy</p><h2 id="rewards-heading">Rewards &amp; points</h2></div>
+    {{#if permissions.manageRewards}}<span class="capability capability--manage">Can manage rewards</span>{{else}}<span class="capability">Read only</span>{{/if}}
+  </div>
+
+  <div class="architecture-note panel">
+    <strong>Reward boundary</strong>
+    <span>{{rewards.architectureNote}}</span>
+  </div>
+
+  <div class="management-grid">
+    <article class="panel">
+      <div class="panel-title-row"><h3>Configured rewards</h3><span class="muted">{{rewards.enabled}} enabled · {{rewards.disabled}} disabled</span></div>
+      {{#if rewards.total}}
+        <div class="management-stack">
+          {{#each rewards.items}}
+            <section class="management-card" aria-labelledby="reward-{{id}}-title">
+              <div class="panel-title-row"><div><h3 id="reward-{{id}}-title">{{name}}</h3><span class="muted">{{pointCost}} points · {{fulfillmentLabel}}</span></div><span class="status-pill {{#if enabled}}status-pill--live{{else}}status-pill--neutral{{/if}}">{{statusLabel}}</span></div>
+              {{#if description}}<p>{{description}}</p>{{/if}}
+              <dl class="detail-list management-details">
+                <div><dt>Eligibility</dt><dd>{{eligibilityLabel}}</dd></div>
+                <div><dt>Providers</dt><dd>{{providerLabel}}</dd></div>
+                <div><dt>Per-user cooldown</dt><dd>{{#if perUserCooldownSeconds}}{{perUserCooldownSeconds}}s{{else}}None{{/if}}</dd></div>
+                <div><dt>Global cooldown</dt><dd>{{#if globalCooldownSeconds}}{{globalCooldownSeconds}}s{{else}}None{{/if}}</dd></div>
+                <div><dt>Per-session limit</dt><dd>{{#if perStreamLimit}}{{perStreamLimit}}{{else}}None{{/if}}</dd></div>
+              </dl>
+              {{#if canManage}}
+                <details class="management-editor">
+                  <summary>Edit reward</summary>
+                  <form class="management-form" method="post" action="/dashboard/rewards">
+                    <input type="hidden" name="streamerId" value="{{@root.currentStreamer.id}}">
+                    <input type="hidden" name="action" value="update">
+                    <input type="hidden" name="rewardId" value="{{id}}">
+                    <div class="management-form-grid">
+                      <label>Name<input name="name" value="{{name}}" maxlength="120" required></label>
+                      <label>Point cost<input type="number" name="pointCost" value="{{pointCost}}" min="1" required></label>
+                      <label>Status<select name="enabled"><option value="true" {{#if enabled}}selected{{/if}}>Enabled</option><option value="false" {{#unless enabled}}selected{{/unless}}>Disabled</option></select></label>
+                      <label>Per-user cooldown (seconds)<input type="number" name="perUserCooldownSeconds" value="{{perUserCooldownSeconds}}" min="0" placeholder="None"></label>
+                      <label>Global cooldown (seconds)<input type="number" name="globalCooldownSeconds" value="{{globalCooldownSeconds}}" min="0" placeholder="None"></label>
+                      <label>Per-session limit<input type="number" name="perStreamLimit" value="{{perStreamLimit}}" min="1" placeholder="None"></label>
+                    </div>
+                    <label>Description<textarea name="description" maxlength="2000" rows="3">{{description}}</textarea></label>
+                    <p class="management-note">Fulfillment stays {{fulfillmentLabel}} in this editor. Use the API if an intentional executor-type migration is required.</p>
+                    <button class="button button--secondary" type="submit">Save reward</button>
+                  </form>
+                </details>
+              {{/if}}
+            </section>
+          {{/each}}
+        </div>
+      {{else}}
+        <p class="muted">No reward definitions are configured.</p>
+      {{/if}}
+
+      {{#if rewards.canManage}}
+        <details class="management-editor management-editor--create">
+          <summary>Create reward</summary>
+          <form class="management-form" method="post" action="/dashboard/rewards">
+            <input type="hidden" name="streamerId" value="{{currentStreamer.id}}">
+            <input type="hidden" name="action" value="create">
+            <div class="management-form-grid">
+              <label>Name<input name="name" maxlength="120" required></label>
+              <label>Point cost<input type="number" name="pointCost" min="1" required></label>
+              <label>Fulfillment<select name="fulfillmentType">{{#each rewards.fulfillmentTypes}}<option value="{{value}}">{{label}}</option>{{/each}}</select></label>
+              <label>Deterministic action<select name="executorAction">{{#each rewards.executorActions}}<option value="{{value}}">{{label}}</option>{{/each}}</select></label>
+              <label>Status<select name="enabled"><option value="true">Enabled</option><option value="false">Disabled</option></select></label>
+              <label>Eligibility<select name="eligibilityMembership">{{#each rewards.eligibilityOptions}}<option value="{{value}}">{{label}}</option>{{/each}}</select></label>
+              <label>Per-user cooldown (seconds)<input type="number" name="perUserCooldownSeconds" min="0" placeholder="None"></label>
+              <label>Global cooldown (seconds)<input type="number" name="globalCooldownSeconds" min="0" placeholder="None"></label>
+              <label>Per-session limit<input type="number" name="perStreamLimit" min="1" placeholder="None"></label>
+            </div>
+            <label>Description<textarea name="description" maxlength="2000" rows="3"></textarea></label>
+            <p class="management-note">The deterministic action is used only when “Deterministic bot” is selected. AI is intentionally not available here.</p>
+            <button type="submit">Create reward</button>
+          </form>
+        </details>
+      {{/if}}
+    </article>
+
+    <article class="panel">
+      <div class="panel-title-row"><h3>Point economy</h3><span class="muted">{{points.enabledPolicyCount}} / {{points.policyCount}} earning policies enabled</span></div>
+      <dl class="stat-list">
+        <div><dt>Participant accounts</dt><dd>{{points.participantCount}}</dd></div>
+        <div><dt>Available points</dt><dd>{{points.availableBalance}}</dd></div>
+        <div><dt>Lifetime earned</dt><dd>{{points.lifetimeEarned}}</dd></div>
+        <div><dt>Lifetime spent</dt><dd>{{points.lifetimeSpent}}</dd></div>
+      </dl>
+      {{#if points.policyCount}}
+        <div class="management-stack">
+          {{#each points.policies}}
+            <section class="management-card">
+              <div class="panel-title-row"><div><strong>{{name}}</strong><span class="muted management-block">{{eventLabel}} · {{points}} points</span></div><span class="status-pill {{#if enabled}}status-pill--live{{else}}status-pill--neutral{{/if}}">{{statusLabel}}</span></div>
+              <dl class="detail-list management-details">
+                <div><dt>Per-session cap</dt><dd>{{#if perSessionCap}}{{perSessionCap}}{{else}}None{{/if}}</dd></div>
+                <div><dt>Per-day cap</dt><dd>{{#if perDayCap}}{{perDayCap}}{{else}}None{{/if}}</dd></div>
+              </dl>
+            </section>
+          {{/each}}
+        </div>
+      {{else}}
+        <p class="muted">No earning policies are configured.</p>
+      {{/if}}
+      <p class="management-note">Earning policies are shown here because they drive the current point service. This dashboard does not invent policy mutation endpoints that the backend does not currently provide.</p>
+    </article>
+  </div>
+</section>

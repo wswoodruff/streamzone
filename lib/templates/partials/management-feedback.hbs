@@ -1,0 +1,6 @@
+{{#if feedback}}
+<div class="management-feedback management-feedback--{{feedback.type}}" role="{{#if feedback.isError}}alert{{else}}status{{/if}}">
+  <strong>{{feedback.title}}</strong>
+  <span>{{feedback.message}}</span>
+</div>
+{{/if}}
