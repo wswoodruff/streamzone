@@ -70,32 +70,6 @@ Creating a streamer atomically creates an `owner` membership for the authenticat
 caller. The response contains both records as `{ "streamer": {...}, "membership":
 {...} }`.
 
-### Assigning owners to legacy streamers
-
-Migration `004` intentionally does not guess owners for streamer rows that existed
-before memberships were introduced. An unowned streamer remains visible through the
-public catalog, but all tenant-scoped reads and mutations are denied because no user
-has a membership.
-
-An administrator must prepare a reviewed, deterministic JSON mapping using database
-IDs and run the bootstrap command after migrations have completed:
-
-```json
-[
-  { "streamerId": 1, "userId": 12 },
-  { "streamerId": 2, "userId": 19 }
-]
-```
-
-```sh
-DATABASE_FILE=/path/to/streamzone.sqlite npm run bootstrap:owners -- owners.json
-```
-
-The command applies the complete mapping in one transaction. It rejects missing users
-or streamers, duplicate streamer mappings, and streamers that already have any
-membership, rather than overwriting or inferring ownership. A failure rolls back every
-assignment so the mapping can be corrected and rerun.
-
 Register a streamer and one of their channels:
 
 ```sh

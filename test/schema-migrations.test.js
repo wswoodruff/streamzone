@@ -17,12 +17,13 @@ if (!Knex) {
     Test('schema migration assertions (database dependencies unavailable)', { skip: true }, () => {});
 }
 else {
-    const createStreamingTables = require('../migrations/001-create-streaming-tables');
-    const createAuthTables = require('../migrations/002-create-auth-tables');
-    const createCommandTables = require('../migrations/003-create-command-tables');
-    const renameModelTables = require('../migrations/004-rename-model-tables');
-    const createStreamerMemberships = require('../migrations/005-create-streamer-memberships');
-    const createStreamerInvitations = require('../migrations/006-create-streamer-invitations');
+    const migrations = [
+        require('../migrations/001-create-streaming-tables'),
+        require('../migrations/002-create-auth-tables'),
+        require('../migrations/003-create-command-tables'),
+        require('../migrations/004-create-streamer-memberships'),
+        require('../migrations/005-create-streamer-invitations')
+    ];
     const Streamer = require('../lib/models/streamer');
     const User = require('../lib/models/user');
 
@@ -49,47 +50,33 @@ else {
     const foreignKeys = async (knex, table) => (await knex.raw(`PRAGMA foreign_key_list(\`${table}\`)`))
         .map(({ from, table: referencedTable, on_delete: onDelete }) => ({ from, referencedTable, onDelete }));
 
-    const migrateLowercaseSchema = async (knex) => {
-        await createStreamingTables.up(knex);
-        await createAuthTables.up(knex);
-        await createCommandTables.up(knex);
-    };
-
-    Test('PascalCase migrations build a valid fresh schema', async (t) => {
+    Test('migrations build a valid fresh PascalCase schema', async (t) => {
         const knex = await makeDatabase();
         t.after(() => knex.destroy());
 
-        await migrateLowercaseSchema(knex);
-        await renameModelTables.up(knex);
-        await createStreamerMemberships.up(knex);
-        await createStreamerInvitations.up(knex);
+        for (const migration of migrations) await migration.up(knex);
 
         Assert.deepEqual(await tableNames(knex), expectedTables);
         Assert.deepEqual(await knex.raw('PRAGMA foreign_key_check'), []);
         for (const table of expectedTables) Assert.equal(await knex.schema.hasTable(table), true);
     });
 
-    Test('forward migrations rename a populated lowercase schema and preserve its constraints and relations', async (t) => {
+    Test('fresh schema preserves constraints and model relations', async (t) => {
         const knex = await makeDatabase();
         t.after(async () => {
             Model.knex(null);
             await knex.destroy();
         });
 
-        await migrateLowercaseSchema(knex);
-        const [streamerId] = await knex('streamers').insert({ slug: 'alice', displayName: 'Alice' });
-        const [sourceId] = await knex('sources').insert({ streamerId, provider: 'twitch', channelId: 'alice-channel' });
-        await knex('streams').insert({ sourceId, externalId: 'live-1', title: 'Live now' });
-        await knex('commands').insert({ streamerId, name: 'hello', responseTemplate: 'Hello!' });
-        const [userId] = await knex('users').insert({ email: 'alice@example.com', displayName: 'Alice', passwordHash: 'hash' });
-        await knex('sessions').insert({ id: 'a'.repeat(64), userId, expiresAt: new Date(Date.now() + 60_000).toISOString() });
-
-        await renameModelTables.up(knex);
-        await createStreamerMemberships.up(knex);
-        await createStreamerInvitations.up(knex);
+        for (const migration of migrations) await migration.up(knex);
+        const [streamerId] = await knex('Streamer').insert({ slug: 'alice', displayName: 'Alice' });
+        const [sourceId] = await knex('Source').insert({ streamerId, provider: 'twitch', channelId: 'alice-channel' });
+        await knex('Stream').insert({ sourceId, externalId: 'live-1', title: 'Live now' });
+        await knex('Command').insert({ streamerId, name: 'hello', responseTemplate: 'Hello!' });
+        const [userId] = await knex('User').insert({ email: 'alice@example.com', displayName: 'Alice', passwordHash: 'hash' });
+        await knex('Session').insert({ id: 'a'.repeat(64), userId, expiresAt: new Date(Date.now() + 60_000).toISOString() });
         await knex('StreamerMembership').insert({ userId, streamerId, role: 'owner' });
 
-        Assert.deepEqual(await tableNames(knex), expectedTables);
         Assert.deepEqual(await foreignKeys(knex, 'Session'), [
             { from: 'userId', referencedTable: 'User', onDelete: 'CASCADE' }
         ]);
@@ -130,25 +117,13 @@ else {
         Assert.equal(await knex('Command').count({ count: '*' }).first().then(({ count }) => Number(count)), 0);
     });
 
-    Test('down migrations restore the lowercase schema with working foreign keys', async (t) => {
+    Test('down migrations remove the fresh schema cleanly', async (t) => {
         const knex = await makeDatabase();
         t.after(() => knex.destroy());
-        await migrateLowercaseSchema(knex);
-        await renameModelTables.up(knex);
-        await createStreamerMemberships.up(knex);
-        await createStreamerInvitations.up(knex);
+        for (const migration of migrations) await migration.up(knex);
+        for (const migration of migrations.toReversed()) await migration.down(knex);
 
-        await createStreamerInvitations.down(knex);
-        await createStreamerMemberships.down(knex);
-        await renameModelTables.down(knex);
-
-        Assert.deepEqual(await tableNames(knex), ['commands', 'sessions', 'sources', 'streamers', 'streams', 'users']);
-        Assert.deepEqual(await foreignKeys(knex, 'sessions'), [
-            { from: 'userId', referencedTable: 'users', onDelete: 'CASCADE' }
-        ]);
-        Assert.deepEqual(await foreignKeys(knex, 'streams'), [
-            { from: 'sourceId', referencedTable: 'sources', onDelete: 'CASCADE' }
-        ]);
+        Assert.deepEqual(await tableNames(knex), []);
         Assert.deepEqual(await knex.raw('PRAGMA foreign_key_check'), []);
     });
 }

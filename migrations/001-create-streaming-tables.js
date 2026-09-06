@@ -1,16 +1,16 @@
 'use strict';
 
 exports.up = async (knex) => {
-    await knex.schema.createTable('streamers', (table) => {
+    await knex.schema.createTable('Streamer', (table) => {
         table.increments('id').primary();
         table.string('slug', 80).notNullable().unique();
         table.string('displayName', 120).notNullable();
         table.timestamp('createdAt').notNullable().defaultTo(knex.fn.now());
     });
 
-    await knex.schema.createTable('sources', (table) => {
+    await knex.schema.createTable('Source', (table) => {
         table.increments('id').primary();
-        table.integer('streamerId').unsigned().notNullable().references('id').inTable('streamers').onDelete('CASCADE');
+        table.integer('streamerId').unsigned().notNullable().references('id').inTable('Streamer').onDelete('CASCADE');
         table.enum('provider', ['youtube', 'twitch']).notNullable();
         table.string('channelId', 255).notNullable();
         table.boolean('enabled').notNullable().defaultTo(true);
@@ -18,9 +18,9 @@ exports.up = async (knex) => {
         table.unique(['provider', 'channelId']);
     });
 
-    await knex.schema.createTable('streams', (table) => {
+    await knex.schema.createTable('Stream', (table) => {
         table.increments('id').primary();
-        table.integer('sourceId').unsigned().notNullable().references('id').inTable('sources').onDelete('CASCADE');
+        table.integer('sourceId').unsigned().notNullable().references('id').inTable('Source').onDelete('CASCADE');
         table.string('externalId', 255).nullable();
         table.string('title', 255).nullable();
         table.enum('status', ['scheduled', 'live', 'offline']).notNullable().defaultTo('scheduled');
@@ -33,7 +33,7 @@ exports.up = async (knex) => {
 };
 
 exports.down = async (knex) => {
-    await knex.schema.dropTableIfExists('streams');
-    await knex.schema.dropTableIfExists('sources');
-    await knex.schema.dropTableIfExists('streamers');
+    await knex.schema.dropTableIfExists('Stream');
+    await knex.schema.dropTableIfExists('Source');
+    await knex.schema.dropTableIfExists('Streamer');
 };

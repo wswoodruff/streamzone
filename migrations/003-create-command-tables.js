@@ -1,9 +1,9 @@
 'use strict';
 
 exports.up = async (knex) => {
-    await knex.schema.createTable('commands', (table) => {
+    await knex.schema.createTable('Command', (table) => {
         table.increments('id').primary();
-        table.integer('streamerId').unsigned().notNullable().references('id').inTable('streamers').onDelete('CASCADE');
+        table.integer('streamerId').unsigned().notNullable().references('id').inTable('Streamer').onDelete('CASCADE');
         table.string('name', 50).notNullable();
         table.string('responseTemplate', 1000).notNullable();
         table.boolean('enabled').notNullable().defaultTo(true);
@@ -16,5 +16,5 @@ exports.up = async (knex) => {
 };
 
 exports.down = async (knex) => {
-    await knex.schema.dropTableIfExists('commands');
+    await knex.schema.dropTableIfExists('Command');
 };

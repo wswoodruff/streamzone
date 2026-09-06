@@ -12,10 +12,6 @@ exports.up = async (knex) => {
         table.index(['userId']);
         table.index(['streamerId']);
     });
-
-    // Existing streamers deliberately remain unowned. Ownership is identity data and
-    // cannot be inferred safely; administrators assign it from a reviewed ID mapping
-    // with `npm run bootstrap:owners -- <mapping.json>` after this migration.
 };
 
 exports.down = async (knex) => {

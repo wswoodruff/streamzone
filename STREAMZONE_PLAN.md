@@ -94,12 +94,12 @@ Completed prerequisites remain here to make the required execution order explici
 
 - [x] **Refactor to one route per file with haute-couture.** Preserve route parity with
   composition tests while organizing route modules by resource. (2026-09-06)
-- [x] **Rename tables to singular PascalCase.** Add a forward migration that safely
-  handles SQLite case-only renames and schema tests for fresh and upgraded databases.
+- [x] **Use singular PascalCase table names.** Define the initial schema with names
+  matching the models and cover fresh database creation with schema tests.
   (2026-09-06)
 - [x] **Establish membership schema, role capabilities, and creator ownership.** Add
   owner/admin/editor/viewer memberships, centralized capabilities, atomic creator-owner
-  creation, and a deterministic bootstrap path for legacy streamers. (2026-09-06)
+  creation for every new streamer. (2026-09-06)
 - [x] **Enforce authorization across management routes and dashboard queries.** Scope
   all management reads and writes to memberships and cover same-tenant, cross-tenant,
   role, and dashboard isolation behavior. (2026-09-06)
