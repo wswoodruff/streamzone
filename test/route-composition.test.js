@@ -1,0 +1,91 @@
+'use strict';
+
+const Assert = require('node:assert/strict');
+const Fs = require('node:fs');
+const Module = require('node:module');
+const Path = require('node:path');
+const Test = require('node:test');
+
+const expectedRoutes = [
+    ['GET', '/'],
+    ['GET', '/dashboard'],
+    ['GET', '/login'],
+    ['POST', '/login'],
+    ['POST', '/logout'],
+    ['GET', '/register'],
+    ['POST', '/register'],
+    ['GET', '/streamers'],
+    ['POST', '/streamers'],
+    ['PATCH', '/streamers/{streamerId}'],
+    ['DELETE', '/streamers/{streamerId}'],
+    ['POST', '/streamers/{streamerId}/sources'],
+    ['GET', '/streamers/{streamerId}/commands'],
+    ['POST', '/streamers/{streamerId}/commands'],
+    ['PATCH', '/streamers/{streamerId}/commands/{commandId}'],
+    ['DELETE', '/streamers/{streamerId}/commands/{commandId}'],
+    ['GET', '/streams'],
+    ['POST', '/streams'],
+    ['PATCH', '/streams/{streamId}'],
+    ['DELETE', '/streams/{streamId}']
+];
+
+const joiSchema = new Proxy(() => joiSchema, {
+    apply: () => joiSchema,
+    get: () => joiSchema
+});
+
+const routeFiles = (directory) => Fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const filename = Path.join(directory, entry.name);
+    return entry.isDirectory() ? routeFiles(filename) : entry.name.endsWith('.js') ? [filename] : [];
+});
+
+Test('Haute Couture composition registers every nested route exactly once', async () => {
+    const originalLoad = Module._load;
+    const registered = [];
+    let composeCalls = 0;
+
+    Module._load = (request, parent, isMain) => {
+        if (request === '@hapi/joi') {
+            return joiSchema;
+        }
+
+        if (request === 'handlebars') {
+            return {};
+        }
+
+        if (request === '@hapipal/haute-couture') {
+            return {
+                compose: async (server) => {
+                    ++composeCalls;
+                    for (const filename of routeFiles(Path.join(__dirname, '..', 'lib', 'routes'))) {
+                        server.route(require(filename));
+                    }
+                }
+            };
+        }
+
+        return originalLoad(request, parent, isMain);
+    };
+
+    try {
+        delete require.cache[require.resolve('../lib')];
+        const app = require('../lib');
+        const server = {
+            views: () => undefined,
+            auth: { strategy: () => undefined },
+            route: (definition) => registered.push([definition.method, definition.path])
+        };
+
+        await app.plugin.register(server, {});
+
+        Assert.equal(composeCalls, 1);
+        Assert.equal(registered.length, expectedRoutes.length);
+        for (const route of expectedRoutes) {
+            Assert.equal(registered.filter((registeredRoute) => registeredRoute[0] === route[0] && registeredRoute[1] === route[1]).length, 1, `${route.join(' ')} should be registered exactly once`);
+        }
+    }
+    finally {
+        Module._load = originalLoad;
+        delete require.cache[require.resolve('../lib')];
+    }
+});
