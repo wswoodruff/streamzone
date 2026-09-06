@@ -16,10 +16,13 @@ if (!Knex) {
     Test('invitation integration assertions (database dependencies unavailable)', { skip: true }, () => {});
 }
 else {
-    const migrations = [1, 2, 3, 4, 5, 6].map((number) => require(`../migrations/00${number}-${[
-        'create-streaming-tables', 'create-auth-tables', 'create-command-tables', 'rename-model-tables',
-        'create-streamer-memberships', 'create-streamer-invitations'
-    ][number - 1]}`));
+    const migrations = [
+        require('../migrations/001-create-streaming-tables'),
+        require('../migrations/002-create-auth-tables'),
+        require('../migrations/003-create-command-tables'),
+        require('../migrations/004-create-streamer-memberships'),
+        require('../migrations/005-create-streamer-invitations')
+    ];
     const User = require('../lib/models/user');
     const Streamer = require('../lib/models/streamer');
     const StreamerMembership = require('../lib/models/streamer-membership');
