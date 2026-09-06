@@ -28,19 +28,19 @@ const bootstrapOwners = async (knex, mappings) => {
     return knex.transaction(async (transaction) => {
         const assignments = [];
         for (const { streamerId, userId } of mappings) {
-            const streamer = await transaction('streamers').where({ id: streamerId }).first();
+            const streamer = await transaction('Streamer').where({ id: streamerId }).first();
             if (!streamer) throw new Error(`Streamer ${streamerId} does not exist.`);
 
-            const user = await transaction('users').where({ id: userId }).first();
+            const user = await transaction('User').where({ id: userId }).first();
             if (!user) throw new Error(`User ${userId} does not exist.`);
 
-            const memberships = await transaction('streamerMemberships').where({ streamerId });
+            const memberships = await transaction('StreamerMembership').where({ streamerId });
             if (memberships.length !== 0) {
                 throw new Error(`Streamer ${streamerId} already has membership data; refusing to replace it.`);
             }
 
             const membership = { streamerId, userId, role: 'owner' };
-            await transaction('streamerMemberships').insert(membership);
+            await transaction('StreamerMembership').insert(membership);
             assignments.push(membership);
         }
         return assignments;
