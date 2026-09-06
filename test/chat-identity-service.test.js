@@ -23,14 +23,7 @@ catch {
     // Production database dependencies are optional in stripped-down test environments.
 }
 
-const migrations = [
-    require('../migrations/001-create-streaming-tables'),
-    require('../migrations/002-create-auth-tables'),
-    require('../migrations/003-create-command-tables'),
-    require('../migrations/004-create-streamer-memberships'),
-    require('../migrations/005-create-streamer-invitations'),
-    require('../migrations/006-create-chat-identities')
-];
+const migration = require('../migrations/001-initial-schema');
 
 const author = (changes = {}) => ({
     provider: 'twitch', providerUserId: 'immutable-123', handle: 'first_name',
@@ -54,7 +47,7 @@ Test('identity resolution handles first, repeat, rename, relations, and concurre
     t.after(async () => { Model.knex(null); await knex.destroy(); Fs.rmSync(directory, { recursive: true, force: true }); });
     await knex.raw('PRAGMA journal_mode = WAL');
     await knex.raw('PRAGMA foreign_keys = ON');
-    for (const migration of migrations) await migration.up(knex);
+    await migration.up(knex);
     Model.knex(knex);
 
     const service = new ChatIdentityService();

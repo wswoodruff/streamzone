@@ -18,16 +18,12 @@ catch {
     // Persistence dependencies may be omitted from lightweight test images.
 }
 const InProcessRuntimeState = require('../lib/runtime-state/in-process-runtime-state');
-const baseMigration = require('../migrations/001-create-streaming-tables');
-const sessionMigration = require('../migrations/008-create-stream-sessions');
-const stateMigration = require('../migrations/009-create-stream-session-state');
+const migration = require('../migrations/001-initial-schema');
 
 const setup = async (t, limits) => {
     const knex = Knex({ client: 'better-sqlite3', connection: { filename: ':memory:' }, useNullAsDefault: true });
     await knex.raw('PRAGMA foreign_keys = ON');
-    await baseMigration.up(knex);
-    await sessionMigration.up(knex);
-    await stateMigration.up(knex);
+    await migration.up(knex);
     Model.knex(knex);
     t.after(async () => {
         Model.knex(null);
