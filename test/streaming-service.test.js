@@ -6,82 +6,53 @@ const Test = require('node:test');
 
 const loadService = () => {
     const originalLoad = Module._load;
-
-    Module._load = (request, parent, isMain) => {
-        if (request === '@hapipal/schmervice') {
-            return { Service: class {} };
-        }
-
-        return originalLoad(request, parent, isMain);
-    };
-
-    try {
-        return require('../lib/services/streaming-service');
-    }
-    finally {
-        Module._load = originalLoad;
-    }
+    Module._load = (request, parent, isMain) => request === '@hapipal/schmervice' ? { Service: class {} } : originalLoad(request, parent, isMain);
+    try { return require('../lib/services/streaming-service'); }
+    finally { Module._load = originalLoad; }
 };
 
-Test('a source cannot be added for an unknown streamer', async () => {
-    const StreamingService = loadService();
-    const service = new StreamingService();
-
-    service.server = {
-        models: () => ({
-            Streamer: { query: () => ({ findById: async () => undefined }) },
-            Source: { query: () => ({ insert: () => Assert.fail('should not insert') }) }
-        })
-    };
-
-    Assert.equal(await service.addSource(404, { provider: 'youtube', channelId: 'channel' }), null);
-});
-
-Test('a source is associated with its hosted streamer', async () => {
-    const StreamingService = loadService();
-    const service = new StreamingService();
+Test('source creation delegates tenant authorization and associates the streamer', async () => {
+    const service = new (loadService())();
+    let authorizationArgs;
     let inserted;
-
     service.server = {
-        models: () => ({
-            Streamer: { query: () => ({ findById: async () => ({ id: 7 }) }) },
-            Source: {
-                query: () => ({
-                    insert: async (source) => {
-                        inserted = source;
-                        return source;
-                    }
-                })
-            }
-        })
+        services: () => ({ authorizationService: {
+            requireCapability: async (...args) => (authorizationArgs = args)
+        } }),
+        models: () => ({ Source: { query: () => ({ insert: async (record) => (inserted = record) }) } })
     };
 
-    await service.addSource(7, { provider: 'twitch', channelId: 'creator' });
-
+    await service.addSource(3, 7, 'manageSources', { provider: 'twitch', channelId: 'creator' });
+    Assert.deepEqual(authorizationArgs, [3, 7, 'manageSources']);
     Assert.deepEqual(inserted, { provider: 'twitch', channelId: 'creator', streamerId: 7 });
 });
 
-Test('a command cannot be added for an unknown streamer', async () => {
+Test('command creation delegates tenant authorization and normalizes its name', async () => {
     const service = new (loadService())();
-    service.server = { models: () => ({
-        Streamer: { query: () => ({ findById: async () => undefined }) },
-        Command: { query: () => ({ insert: () => Assert.fail('should not insert') }) }
-    }) };
+    let authorizationArgs;
+    let inserted;
+    service.server = {
+        services: () => ({ authorizationService: {
+            requireCapability: async (...args) => (authorizationArgs = args)
+        } }),
+        models: () => ({ Command: { query: () => ({ insert: async (record) => (inserted = record) }) } })
+    };
 
-    Assert.equal(await service.createCommand(404, { name: 'hello', responseTemplate: 'Hi!' }), null);
+    await service.createCommand(4, 9, 'manageCommands', { name: 'EightBall', responseTemplate: 'Yes.' });
+    Assert.deepEqual(authorizationArgs, [4, 9, 'manageCommands']);
+    Assert.deepEqual(inserted, { name: 'eightball', responseTemplate: 'Yes.', streamerId: 9 });
 });
 
-Test('a command is normalized and scoped to its streamer', async () => {
+Test('stream updates authorize through the stream source hierarchy', async () => {
     const service = new (loadService())();
-    let inserted;
-    service.server = { models: () => ({
-        Streamer: { query: () => ({ findById: async () => ({ id: 9 }) }) },
-        Command: { query: () => ({ insert: async (record) => (inserted = record) }) }
-    }) };
+    let authorizationArgs;
+    service.server = {
+        services: () => ({ authorizationService: {
+            requireStreamCapability: async (...args) => (authorizationArgs = args)
+        } }),
+        models: () => ({ Stream: { query: () => ({ patchAndFetchById: async () => ({ id: 12 }) }) } })
+    };
 
-    await service.createCommand(9, { name: 'EightBall', responseTemplate: '{{user}}, yes.' });
-
-    Assert.deepEqual(inserted, {
-        name: 'eightball', responseTemplate: '{{user}}, yes.', streamerId: 9
-    });
+    await service.updateStream(2, 12, 'manageStreams', { title: 'Updated' });
+    Assert.deepEqual(authorizationArgs, [2, 12, 'manageStreams']);
 });
