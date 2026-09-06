@@ -33,6 +33,7 @@ const cleanup = async () => {
 
 const seedManagementState = async (activeServer) => {
     const services = activeServer.services();
+    const models = activeServer.models();
     const owner = await services.authService.register(OWNER);
     if (!owner) throw new Error('E2E owner seed already exists.');
 
@@ -92,6 +93,31 @@ const seedManagementState = async (activeServer) => {
         cooldownScope: 'session',
         requiredChatRole: 'moderator'
     });
+
+    const editor = await services.authService.register({
+        email: 'editor@example.com',
+        displayName: 'Taylor Editor',
+        password: 'streamzone-editor-password'
+    });
+    await models.StreamerMembership.query().insert({ userId: editor.id, streamerId: streamer.id, role: 'editor' });
+    await services.invitationService.create(owner.id, streamer.id, { email: 'pending.e2e@example.com', role: 'viewer' });
+    await services.rewardService.createReward(owner.id, streamer.id, {
+        name: 'Hydrate', description: 'Take a sip', pointCost: 50, enabled: true, fulfillmentType: 'manual',
+        perUserCooldownSeconds: 30, globalCooldownSeconds: null, perStreamLimit: null,
+        eligibilityPolicy: { membership: 'any', providers: [] }, executorConfiguration: {}
+    });
+    await models.EarningPolicy.query().insert({
+        streamerId: streamer.id, eventType: 'participationInterval', name: 'Watch time', points: 5,
+        perSessionCap: 100, perDayCap: 250, enabled: true
+    });
+    await services.aiFeatureService.updateConfiguration(owner.id, streamer.id, {
+        enabled: true, invocationCommand: 'ask', provider: 'openai', model: 'gpt-5', pointCost: 25,
+        cooldownSeconds: 10, cooldownScope: 'participant', maxInputChars: 2000,
+        maxOutputChars: 1800, maxOutputTokenCount: 512, timeoutMs: 5000
+    });
+    const instruction = await services.instructionService.createDraft(owner.id, streamer.id, 'Keep responses concise and relevant to the creator channel.');
+    await services.instructionService.requestValidation(owner.id, streamer.id, instruction.id);
+    await services.instructionService.publish(owner.id, streamer.id, instruction.id);
 };
 
 const main = async () => {
