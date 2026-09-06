@@ -1,0 +1,38 @@
+name: Playwright UI
+
+on:
+  push:
+    branches:
+      - test/playwright-ui
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Unit tests
+        run: npm test
+      - name: Syntax checks
+        run: npm run test:syntax
+      - name: Playwright behavior tests
+        run: npm run test:e2e
+      - name: Capture UI screenshots
+        run: npm run ui:capture
+      - name: Upload UI review artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-ui
+          if-no-files-found: error
+          path: |
+            artifacts/ui/
+            package-lock.json
