@@ -197,3 +197,16 @@ or unredacted sensitive chat content.
   streamer relationship, scoped service operations, authenticated mutation routes,
   enabled-command listing, unit coverage, and API documentation. Validation: `npm test`,
   `npm run test:syntax`.
+
+## StreamSession compatibility rollout
+
+Existing `Stream` rows intentionally retain a null `streamSessionId`. During the
+compatibility period, reads and provider ingestion must support both grouped and
+ungrouped occurrences; no migration should infer sessions from titles, timestamps, or
+provider identifiers alone. New broadcasts should create or attach to an explicitly
+owned session where the caller can identify that grouping safely. Historical rows may
+be backfilled in small, auditable batches only when tenant, event, and provider identity
+are unambiguous. Metrics should track the remaining null association rate. The nullable
+column and dual-read behavior can be retired only after backfill review, provider retry
+and duplicate handling is verified, and a release has observed no required legacy
+writes.
