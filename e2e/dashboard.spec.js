@@ -115,9 +115,9 @@ test('owner manages Sources, StreamSessions, and provider broadcasts from the st
     await page.getByRole('link', { name: 'Stream', exact: true }).click();
     await expect(page).toHaveURL(/\/dashboard\/stream-management\?streamerId=\d+#sessions$/);
     await expect(page.getByRole('heading', { name: 'Streams & sources' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Two related records, two jobs' })).toBeVisible();
-    await expect(page.getByText('Streamzone runtime window', { exact: true })).toBeVisible();
-    await expect(page.getByText('One occurrence on one Source', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'How live broadcasts are organized' })).toBeVisible();
+    await expect(page.getByText('One show across platforms', { exact: true })).toBeVisible();
+    await expect(page.getByText('One broadcast on one channel', { exact: true })).toBeVisible();
 
     const sourceForm = page.locator('form[action="/dashboard/stream-management/sources"]');
     await expect(sourceForm).toBeVisible();
@@ -148,6 +148,6 @@ test('owner manages Sources, StreamSessions, and provider broadcasts from the st
     await expect(page.getByRole('status')).toHaveText('Provider broadcast attached to the StreamSession.');
     const occurrenceRow = page.locator('.item-list li').filter({ hasText: 'E2E provider occurrence' });
     await expect(occurrenceRow).toContainText('YouTube · managed-youtube-channel');
-    await expect(occurrenceRow).toContainText('StreamSession: E2E managed session');
+    await expect(occurrenceRow).toContainText('Session: E2E managed session');
     await expect(occurrenceRow).toContainText('Live');
 });
