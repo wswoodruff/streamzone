@@ -7,7 +7,7 @@ const Path = require('node:path');
 const Test = require('node:test');
 
 const expectedRoutes = [
-    ['GET', '/'], ['GET', '/assets/{param*}'], ['GET', '/dashboard'], ['POST', '/dashboard/team'], ['POST', '/dashboard/rewards'], ['POST', '/dashboard/ai'], ['POST', '/dashboard/ai/instructions'],
+    ['GET', '/'], ['GET', '/assets/{param*}'], ['GET', '/dashboard'], ['POST', '/dashboard/workspaces'], ['POST', '/dashboard/team'], ['POST', '/dashboard/rewards'], ['POST', '/dashboard/ai'], ['POST', '/dashboard/ai/instructions'],
     ['POST', '/dashboard/streamers/{streamerId}/commands'], ['POST', '/dashboard/streamers/{streamerId}/commands/{commandId}'], ['POST', '/dashboard/streamers/{streamerId}/commands/{commandId}/toggle'], ['POST', '/dashboard/streamers/{streamerId}/commands/{commandId}/delete'],
     ['GET', '/dashboard/stream-management'], ['POST', '/dashboard/stream-management/sources'], ['POST', '/dashboard/stream-management/sessions'], ['POST', '/dashboard/stream-management/sessions/{streamSessionId}/lifecycle'], ['POST', '/dashboard/stream-management/streams'],
     ['GET', '/login'], ['POST', '/login'], ['POST', '/logout'], ['GET', '/register'], ['POST', '/register'],

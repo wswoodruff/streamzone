@@ -11,6 +11,36 @@ test('dashboard requires an authenticated session', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
 });
 
+test('new account validates and creates its first owner workspace', async ({ page }, testInfo) => {
+    const suffix = projectSuffix(testInfo);
+    const email = `first-workspace-${suffix}@example.com`;
+    const slug = `first-workspace-${suffix}`;
+
+    await page.goto('/register');
+    await page.getByLabel('Display name').fill(`First Creator ${suffix}`);
+    await page.getByLabel('Email').fill(email);
+    await page.getByLabel('Password').fill('first-workspace-password');
+    await page.getByRole('button', { name: 'Create account' }).click();
+
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole('heading', { name: 'No creator workspace yet' })).toBeVisible();
+    const form = page.getByRole('form', { name: 'Create your first workspace' });
+    await form.getByLabel('Workspace name').fill('Duplicate Workspace');
+    await form.getByLabel('Workspace URL').fill('aurora-live');
+    await form.getByRole('button', { name: 'Create workspace' }).click();
+    await expect(page.getByRole('alert')).toHaveText('That workspace URL is already in use.');
+    await expect(form.getByText('Choose a unique workspace URL.')).toBeVisible();
+
+    await form.getByLabel('Workspace name').fill(`First Workspace ${suffix}`);
+    await form.getByLabel('Workspace URL').fill(slug);
+    await form.getByRole('button', { name: 'Create workspace' }).click();
+
+    await expect(page).toHaveURL(new RegExp(`/dashboard\\?streamerId=\\d+$`));
+    await expect(page.getByRole('heading', { name: `First Workspace ${suffix}`, exact: true })).toBeVisible();
+    await expect(page.getByText(`@${slug}`, { exact: true })).toBeVisible();
+    await expect(page.getByText('Owner access', { exact: true })).toBeVisible();
+});
+
 test('owner signs in, sees seeded management state, and signs out', async ({ page }) => {
     await loginAsOwner(page);
 

@@ -6,6 +6,7 @@
   "main": "lib/index.js",
   "scripts": {
     "start": "node server.js",
+    "dev:seed": "node tools/dev-seed.js",
     "console": "node tools/test-console/client.js",
     "console:host": "node tools/test-console/host.js",
     "test": "NODE_ENV=test node --test",
