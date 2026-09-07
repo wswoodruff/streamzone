@@ -119,8 +119,18 @@
 
       {{#if permissions.manageSources}}
         <article class="panel">
-          <h3>Add a source</h3>
-          <p class="muted">Add the Twitch or YouTube channel Streamzone should associate with this creator.</p>
+          <h3>YouTube</h3>
+          <p class="muted">Authorize YouTube to verify your channel and discover broadcasts. Streamzone never stores raw provider responses.</p>
+          {{#if hasYouTubeConnection}}
+            {{#each youtubeConnections}}
+              <p><strong>Verified channel: {{channelName}}</strong> <span class="muted mono">{{channelId}}</span></p>
+              {{#if reconnect}}<a class="button" href="/streamers/{{../currentStreamer.id}}/provider-connections/youtube/start">Reconnect</a>{{else}}<a class="button button--secondary" href="/streamers/{{../currentStreamer.id}}/provider-connections/youtube/start">Reconnect</a>{{/if}}
+              <form class="inline-form" method="post" action="/streamers/{{../currentStreamer.id}}/provider-connections/{{id}}/disconnect"><button class="button button--quiet" type="submit">Disconnect</button></form>
+            {{/each}}
+          {{else}}<a class="button" href="/streamers/{{currentStreamer.id}}/provider-connections/youtube/start">Connect YouTube</a>{{/if}}
+          <details>
+          <summary>Advanced: Add a source manually</summary>
+          <p class="muted">Manual provider identifiers are intended for development and troubleshooting.</p>
           <form method="post" action="/dashboard/stream-management/sources">
             <input type="hidden" name="streamerId" value="{{currentStreamer.id}}">
             <label for="source-provider">Provider
@@ -134,6 +144,7 @@
             </label>
             <button type="submit">Add source</button>
           </form>
+          </details>
         </article>
       {{/if}}
 
@@ -162,6 +173,22 @@
       </div>
 
       {{#if permissions.manageStreams}}
+        {{#each youtubeConnections}}
+          {{#if active}}
+          <article class="panel" data-youtube-picker>
+            <h3>Select a verified YouTube broadcast</h3>
+            <p class="muted">Only upcoming and currently live broadcasts available to this grant are shown.</p>
+            <form method="post" action="/streamers/{{../currentStreamer.id}}/provider-connections/{{id}}/youtube/broadcasts/select">
+              <label>Broadcast
+                <select name="broadcastId" required data-broadcast-options data-discovery-url="/streamers/{{../currentStreamer.id}}/provider-connections/{{id}}/youtube/broadcasts"><option value="">Loading broadcasts…</option></select>
+              </label>
+              <label>Existing session<select name="streamSessionId"><option value="">Create a new session</option>{{#each ../sessionOptions}}<option value="{{id}}">{{optionLabel}}</option>{{/each}}</select></label>
+              <label>New session title<input name="newSessionTitle" maxlength="255" placeholder="Defaults only when creating a session"></label>
+              <button type="submit">Connect broadcast</button>
+            </form>
+          </article>
+          {{/if}}
+        {{/each}}
         {{#if canAttachBroadcast}}
           <article class="panel">
             <h3>Attach a platform broadcast</h3>
@@ -229,3 +256,9 @@
   <a class="button button--secondary" href="/dashboard">Return to dashboard</a>
 </section>
 {{/if}}
+<script>
+document.querySelectorAll('[data-broadcast-options]').forEach(async (select) => {
+  try { const response = await fetch(select.dataset.discoveryUrl); const body = await response.json(); if (!response.ok) throw new Error(body.message); select.innerHTML = body.broadcasts.length ? body.broadcasts.map((item) => `<option value="${item.id}">${item.title} · ${item.status}</option>`).join('') : '<option value="">No upcoming or active broadcasts</option>'; }
+  catch (error) { select.innerHTML = `<option value="">${error.message || 'Unable to load broadcasts'}</option>`; select.closest('article').setAttribute('data-discovery-error', 'true'); }
+});
+</script>
