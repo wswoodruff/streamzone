@@ -38,12 +38,24 @@ Requires Node.js 22 or newer.
 
 ```sh
 npm ci
+npm run dev:seed
 npm start
 ```
 
 The application listens on `http://localhost:3000` by default. Schwifty runs the schema migration at startup against `streamzone.sqlite`. Override the defaults with `HOST`, `PORT`, and `DATABASE_FILE`.
 
 Create an account at `/register` or sign in at `/login`. Authenticated creator management starts at `/dashboard`.
+
+`npm run dev:seed` is an explicit, idempotent local-development operation. It uses `DATABASE_FILE` when set (otherwise `streamzone.sqlite`) and creates the `@local-creator` workspace, owner/editor memberships, a placeholder YouTube source, a scheduled StreamSession, and public `!hello` command. It refuses to run when `NODE_ENV=production`.
+
+The seeded local credentials are:
+
+| Role | Email | Password |
+| --- | --- | --- |
+| Owner | `owner.dev@example.com` | `streamzone-owner-dev` |
+| Editor | `editor.dev@example.com` | `streamzone-editor-dev` |
+
+**These passwords are development-only. Never use them for a deployed environment.** Seed data and credentials live only in the explicit development seed script; normal production startup does not import them. Running the command again reconciles the same identifiers rather than creating duplicate records.
 
 Playwright also needs Chromium installed locally:
 
@@ -130,7 +142,7 @@ The host binds to `127.0.0.1:3010` by default and exposes its test-only routes o
 
 ## Playwright and CI
 
-`npm run test:e2e` runs behavioral Chromium coverage from `e2e/dashboard.spec.js`. The harness boots the real Hapi application against a temporary SQLite database, seeds deterministic owner/management state, and authenticates through the real `/login` cookie-session flow. Desktop and mobile projects run with one worker for deterministic stateful behavior.
+`npm run test:e2e` runs behavioral Chromium coverage from `e2e/dashboard.spec.js`. The harness in `e2e/server.js` boots the real Hapi application against a temporary SQLite database, seeds deterministic owner/management state, and authenticates through the real `/login` cookie-session flow. The temporary database and its directory are removed after the server process exits. Desktop and mobile projects run with one worker for deterministic stateful behavior.
 
 `npm run ui:capture` runs the separate screenshot spec and writes owner-dashboard and command-management screenshots to `artifacts/ui/`. These are review artifacts, not pixel-diff assertions.
 

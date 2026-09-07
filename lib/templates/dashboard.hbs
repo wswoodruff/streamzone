@@ -234,7 +234,20 @@
 <section class="empty-workspace" aria-labelledby="empty-workspace-title">
   <p class="eyebrow">Creator control room</p>
   <h1 id="empty-workspace-title">No creator workspace yet</h1>
-  <p>Your account is signed in, but it is not a member of any Streamzone creator workspace. Once a streamer membership is provisioned, its management dashboard will appear here.</p>
-  <a class="button button--secondary" href="/">Return to Streamzone</a>
+  <p>Create your first creator workspace. You will become its owner and can invite your team after setup.</p>
+  <form class="panel" method="post" action="/dashboard/workspaces" aria-label="Create your first workspace">
+    {{#if firstWorkspace.error}}<p class="error" role="alert">{{firstWorkspace.error}}</p>{{/if}}
+    <label>Workspace name
+      <input name="displayName" value="{{firstWorkspace.values.displayName}}" maxlength="120" required autocomplete="organization" {{#if firstWorkspace.fieldErrors.displayName}}aria-invalid="true"{{/if}}>
+      {{#if firstWorkspace.fieldErrors.displayName}}<span class="field-error">{{firstWorkspace.fieldErrors.displayName}}</span>{{/if}}
+    </label>
+    <label>Workspace URL
+      <span class="field-prefix">@</span>
+      <input name="slug" value="{{firstWorkspace.values.slug}}" maxlength="80" pattern="[a-z0-9-]+" required autocomplete="off" aria-describedby="workspace-slug-help" {{#if firstWorkspace.fieldErrors.slug}}aria-invalid="true"{{/if}}>
+      <small id="workspace-slug-help" class="muted">Lowercase letters, numbers, and hyphens.</small>
+      {{#if firstWorkspace.fieldErrors.slug}}<span class="field-error">{{firstWorkspace.fieldErrors.slug}}</span>{{/if}}
+    </label>
+    <button type="submit">Create workspace</button>
+  </form>
 </section>
 {{/if}}
