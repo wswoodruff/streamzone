@@ -1,5 +1,18 @@
 # Streamzone
 
+## Provider OAuth configuration
+
+Provider sign-in and creator-channel grants intentionally use separate callback flows. Deployments must provide all of the following environment variables; startup also requires the cookie secret. There are no production defaults for secrets.
+
+- `COOKIE_PASSWORD` (at least 32 characters)
+- `TOKEN_ENCRYPTION_KEY` (a base64-encoded, random 32-byte key)
+- `TOKEN_ENCRYPTION_KEY_VERSION` (optional key identifier, defaults to `v1`)
+- `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`
+- `GOOGLE_LOGIN_CALLBACK_URL` (normally `https://host/auth/google/callback`)
+- `YOUTUBE_CONNECTION_CALLBACK_URL` (normally `https://host/streamers/provider-connections/youtube/callback`)
+
+Generate the encryption key with `openssl rand -base64 32`. OAuth credentials are encrypted with AES-256-GCM and associated with their connection ID; losing this key requires every provider connection to be reauthorized.
+
 Streamzone is a pre-v1 multi-tenant platform for interactive livestream chat experiences. The application keeps provider-specific chat transport outside the domain/runtime layer so commands, rewards, and points can operate against the same internal contracts across streaming providers. Standalone AI uses those provider-neutral contracts as an independent channel feature.
 
 The server uses Hapi and hapipal, Vision/Handlebars for server-rendered management UI, Schwifty/Objection/Knex with SQLite for local persistence, Schmervice for application services, and Hapi Cookie for authenticated web sessions.
